@@ -3,12 +3,14 @@ package users_test
 import (
 	"context"
 	"database/sql"
+	"net"
 	"net/url"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
-	gomock "github.com/golang/mock/gomock"
+	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
@@ -74,6 +76,11 @@ func TestMain(m *testing.M) {
 	}()
 
 	pgURL.Host = resource.Container.NetworkSettings.IPAddress
+
+	// Docker layer network is different on Mac
+	if runtime.GOOS == "darwin" {
+		pgURL.Host = net.JoinHostPort(resource.GetBoundIP("5432/tcp"), resource.GetPort("5432/tcp"))
+	}
 
 	logWaiter, err := pool.Client.AttachToContainerNonBlocking(docker.AttachToContainerOptions{
 		Container:    resource.Container.ID,
