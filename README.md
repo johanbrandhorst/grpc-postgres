@@ -51,8 +51,10 @@ Run `make install` to install the generation dependencies:
 $ make install
 go get \
         github.com/golang/protobuf/protoc-gen-go \
-        github.com/jteeuwen/go-bindata/go-bindata
+        github.com/jteeuwen/go-bindata/go-bindata \
+        github.com/golang/mock/mockgen
 go: finding github.com/jteeuwen/go-bindata/go-bindata latest
+go: finding github.com/golang/mock/mockgen latest
 go: finding github.com/golang/protobuf/protoc-gen-go latest
 ```
 
@@ -65,6 +67,7 @@ regenerate the files:
 $ make generate
 protoc -I proto --go_out=plugins=grpc,paths=source_relative:./proto ./proto/users.proto
 go-bindata -pkg migrations -ignore bindata -prefix ./users/migrations/ -o ./users/migrations/bindata.go ./users/migrations
+mockgen -destination ./users/mocks_test.go -package users_test github.com/johanbrandhorst/grpc-postgres/proto UserService_ListUsersServer
 ```
 
 If you want to change the schema of the database, add another migration file.
