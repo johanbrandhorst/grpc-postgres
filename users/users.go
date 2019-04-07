@@ -59,6 +59,22 @@ func (d Directory) AddUser(ctx context.Context, req *pbUsers.AddUserRequest) (*p
 	return scanUser(q.QueryRowContext(ctx))
 }
 
+// DeleteUser deletes the user, if found.
+func (d Directory) DeleteUser(ctx context.Context, req *pbUsers.DeleteUserRequest) (*pbUsers.User, error) {
+	q, args, err := d.sb.Delete(
+		"users",
+	).Where(squirrel.Eq{
+		"id": req.GetId(),
+	}).Suffix(
+		"RETURNING id, role, create_time",
+	).ToSql()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
+	return scanUser(d.db.QueryRowContext(ctx, q, args...))
+}
+
 // ListUsers lists users in the directory, subject to the request filters.
 func (d Directory) ListUsers(req *pbUsers.ListUsersRequest, srv pbUsers.UserService_ListUsersServer) (err error) {
 	q := d.sb.Select(
