@@ -43,7 +43,6 @@ func (rw *roleWrapper) Scan(in interface{}) error {
 	default:
 		return fmt.Errorf("invalid Role: %q", in.(string))
 	}
-	return nil
 }
 
 type timeWrapper timestamp.Timestamp
