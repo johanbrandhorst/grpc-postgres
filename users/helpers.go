@@ -8,6 +8,8 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	bindata "github.com/golang-migrate/migrate/v4/source/go_bindata"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pbUsers "github.com/johanbrandhorst/grpc-postgres/proto"
 	"github.com/johanbrandhorst/grpc-postgres/users/migrations"
@@ -47,6 +49,10 @@ func scanUser(row squirrel.RowScanner) (*pbUsers.User, error) {
 		(*timeWrapper)(user.CreateTime),
 	)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, status.Error(codes.NotFound, "no such user")
+		}
+
 		return nil, err
 	}
 
