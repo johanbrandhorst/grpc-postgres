@@ -46,6 +46,11 @@ func NewDirectory(logger *logrus.Logger, pgURL *url.URL) (*Directory, error) {
 	}, nil
 }
 
+// Close releases any resources.
+func (d Directory) Close() error {
+	return d.db.Close()
+}
+
 // AddUser adds a user to the directory
 func (d Directory) AddUser(ctx context.Context, req *pbUsers.AddUserRequest) (*pbUsers.User, error) {
 	q := d.sb.Insert(
