@@ -88,6 +88,8 @@ func (d Directory) ListUsers(req *pbUsers.ListUsersRequest, srv pbUsers.UserServ
 		"create_time",
 	).From(
 		"users",
+	).OrderBy(
+		"create_time ASC",
 	)
 
 	if req.GetCreatedSince() != nil {
