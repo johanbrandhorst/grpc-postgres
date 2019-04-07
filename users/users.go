@@ -106,10 +106,6 @@ func (d Directory) ListUsers(req *pbUsers.ListUsersRequest, srv pbUsers.UserServ
 		)
 	}
 
-	defer func() {
-		d.logger.WithError(err).Debug("stuff")
-	}()
-
 	rows, err := q.QueryContext(srv.Context())
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
