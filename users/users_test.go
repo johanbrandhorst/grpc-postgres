@@ -272,4 +272,26 @@ func TestListUsers(t *testing.T) {
 		}
 		ctrl.Finish()
 	})
+
+	t.Run("Filtering by age and create time", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		srv := NewMockUserService_ListUsersServer(ctrl)
+		srv.EXPECT().Context().Return(ctx)
+		srv.EXPECT().Send(user2).Return(nil)
+
+		tm, err := ptypes.Timestamp(user2.GetCreateTime())
+		if err != nil {
+			t.Fatalf("Failed to parse timestamp: %s", err)
+		}
+		olderThan := time.Since(tm)
+
+		err = d.ListUsers(&pbUsers.ListUsersRequest{
+			CreatedSince: user1.GetCreateTime(),
+			OlderThan:    ptypes.DurationProto(olderThan),
+		}, srv)
+		if err != nil {
+			t.Fatalf("Failed to list users: %s", err)
+		}
+		ctrl.Finish()
+	})
 }

@@ -101,7 +101,7 @@ func (d Directory) ListUsers(req *pbUsers.ListUsersRequest, srv pbUsers.UserServ
 	if req.GetOlderThan() != nil {
 		q = q.Where(
 			squirrel.Expr(
-				"CURRENT_TIMESTAMP - create_time > $1", (*durationWrapper)(req.GetOlderThan()),
+				"CURRENT_TIMESTAMP - create_time > ?", (*durationWrapper)(req.GetOlderThan()),
 			),
 		)
 	}
