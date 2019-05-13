@@ -15,28 +15,12 @@ Start the server:
 ```bash
 $ go run main.go --postgres-url psql://postgres:mypass@localhost:5432/postgres
 ...
-INFO[2019-04-06T20:53:06+01:00] Serving gRPC on https://:10000
+INFO[2019-05-13T23:09:19+01:00] Serving gRPC on [::]:10000
+INFO[2019-05-13T23:09:19+01:00] Serving HTTP UI on http://localhost:11000
 ```
 
-Add a user:
-
-```bash
-$ cd cmd && go run main.go --add
-```
-
-List all users:
-```bash
-$ cd cmd && go run main.go
-...
-INFO Finished
-```
-
-List all users older than 1h:
-```bash
-$ cd cmd && go run main.go --older_than "1h"
-...
-INFO Finished
-```
+Navigate to http://localhost:11000 to see the auto-generated web UI for the
+service, courtesy of gRPC reflection and github.com/fullstorydev/grpcui!
 
 ## Developing
 
