@@ -10,11 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gogo/status"
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
 
 	pbUsers "github.com/johanbrandhorst/grpc-postgres/proto"
 	"github.com/johanbrandhorst/grpc-postgres/users"
@@ -134,48 +136,59 @@ func TestAddDeleteUser(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	role := pbUsers.Role_ADMIN
-	user1, err := d.AddUser(ctx, &pbUsers.AddUserRequest{
-		Role: role,
+	t.Run("When deleting an added user", func(t *testing.T) {
+		role := pbUsers.Role_ADMIN
+		user1, err := d.AddUser(ctx, &pbUsers.AddUserRequest{
+			Role: role,
+		})
+		if err != nil {
+			t.Fatalf("Failed to add a user: %s", err)
+		}
+
+		if user1.GetRole() != role {
+			t.Errorf("Got role %q, wanted role %q", user1.GetRole(), role)
+		}
+		if user1.GetCreateTime() == nil {
+			t.Fatal("CreateTime was not set")
+		}
+
+		tm, err := ptypes.Timestamp(user1.GetCreateTime())
+		if err != nil {
+			t.Fatalf("CreateTime could not be parsed: %s", err)
+		}
+
+		s := time.Since(tm)
+		if s > time.Second {
+			t.Errorf("CreateTime was longer than 1 second ago: %s", s)
+		}
+
+		if user1.GetId() == "" {
+			t.Error("Id was not set")
+		}
+
+		user2, err := d.DeleteUser(ctx, &pbUsers.DeleteUserRequest{
+			Id: user1.GetId(),
+		})
+		if err != nil {
+			t.Fatalf("Failed to delete user: %s", err)
+		}
+
+		if user1.GetRole() != user2.GetRole() ||
+			user1.GetId() != user2.GetId() ||
+			user1.GetCreateTime().GetNanos() != user2.GetCreateTime().GetNanos() ||
+			user1.GetCreateTime().GetSeconds() != user2.GetCreateTime().GetSeconds() {
+			t.Fatalf("Deleted user differed from created user:\n%#v\n%#v", user1, user2)
+		}
 	})
-	if err != nil {
-		t.Fatalf("Failed to add a user: %s", err)
-	}
 
-	if user1.GetRole() != role {
-		t.Errorf("Got role %q, wanted role %q", user1.GetRole(), role)
-	}
-	if user1.GetCreateTime() == nil {
-		t.Fatal("CreateTime was not set")
-	}
-
-	tm, err := ptypes.Timestamp(user1.GetCreateTime())
-	if err != nil {
-		t.Fatalf("CreateTime could not be parsed: %s", err)
-	}
-
-	s := time.Since(tm)
-	if s > time.Second {
-		t.Errorf("CreateTime was longer than 1 second ago: %s", s)
-	}
-
-	if user1.GetId() == "" {
-		t.Error("Id was not set")
-	}
-
-	user2, err := d.DeleteUser(ctx, &pbUsers.DeleteUserRequest{
-		Id: user1.GetId(),
+	t.Run("When using a non-uuid in DeleteUser", func(t *testing.T) {
+		_, err = d.DeleteUser(ctx, &pbUsers.DeleteUserRequest{
+			Id: "not_a_UUID",
+		})
+		if status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("Did not get correct error when using non-UUID ID in DeleteUser")
+		}
 	})
-	if err != nil {
-		t.Fatalf("Failed to delete user: %s", err)
-	}
-
-	if user1.GetRole() != user2.GetRole() ||
-		user1.GetId() != user2.GetId() ||
-		user1.GetCreateTime().GetNanos() != user2.GetCreateTime().GetNanos() ||
-		user1.GetCreateTime().GetSeconds() != user2.GetCreateTime().GetSeconds() {
-		t.Fatalf("Deleted user differed from created user:\n%#v\n%#v", user1, user2)
-	}
 }
 
 func TestListUsers(t *testing.T) {
