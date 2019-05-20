@@ -13,14 +13,10 @@ import (
 	"time"
 
 	"github.com/fullstorydev/grpcui/standalone"
-	"github.com/fullstorydev/grpcurl"
-	"github.com/jhump/protoreflect/desc"
-	"github.com/jhump/protoreflect/grpcreflect"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
-	reflectpb "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 
 	pbUsers "github.com/johanbrandhorst/grpc-postgres/proto"
 	"github.com/johanbrandhorst/grpc-postgres/users"
@@ -115,55 +111,17 @@ func main() {
 	}
 	defer cc.Close()
 
-	m, f, err := getMethodsAndFiles(ctx, cc)
+	handler, err := standalone.HandlerViaReflection(ctx, cc, sAddr)
 	if err != nil {
-		log.WithError(err).Fatal("Failed to get server properties")
+		log.WithError(err).Fatal("Failed to create grpc UI handler")
 	}
 
 	httpS := &http.Server{
 		Addr:    fmt.Sprintf(":%d", *httpPort),
-		Handler: standalone.Handler(cc, sAddr, m, f),
+		Handler: handler,
 	}
 
 	// Serve HTTP Server
 	log.Info("Serving HTTP UI on http://localhost", httpS.Addr)
 	log.Fatal(httpS.ListenAndServe())
-}
-
-func getMethodsAndFiles(ctx context.Context, cc *grpc.ClientConn) ([]*desc.MethodDescriptor, []*desc.FileDescriptor, error) {
-	c := grpcreflect.NewClient(ctx, reflectpb.NewServerReflectionClient(cc))
-	source := grpcurl.DescriptorSourceFromServer(ctx, c)
-
-	allServices, err := source.ListServices()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	var m []*desc.MethodDescriptor
-	for _, svc := range allServices {
-		d, err := source.FindSymbol(svc)
-		if err != nil {
-			return nil, nil, err
-		}
-		sd, ok := d.(*desc.ServiceDescriptor)
-		if !ok {
-			return nil, nil, fmt.Errorf("%s should be a service descriptor but instead is a %T", d.GetFullyQualifiedName(), d)
-		}
-		if sd.GetFullyQualifiedName() == "grpc.reflection.v1alpha.ServerReflection" {
-			continue // skip reflection service
-		}
-		for _, md := range sd.GetMethods() {
-			m = append(m, md)
-		}
-	}
-
-	f, err := grpcurl.GetAllFiles(source)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Release resources
-	c.Reset()
-
-	return m, f, nil
 }
