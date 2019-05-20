@@ -77,7 +77,15 @@ func (d Directory) DeleteUser(ctx context.Context, req *pbUsers.DeleteUserReques
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	return scanUser(d.db.QueryRowContext(ctx, q, args...))
+	user, err := scanUser(d.db.QueryRowContext(ctx, q, args...))
+	if err != nil {
+		if pgErr, ok := err.(pgx.PgError); ok && pgErr.Code == "22P02" {
+			return nil, status.Error(codes.InvalidArgument, "invalid UUID provided")
+		}
+		return nil, err
+	}
+
+	return user, nil
 }
 
 // ListUsers lists users in the directory, subject to the request filters.
