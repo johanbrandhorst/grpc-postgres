@@ -7,13 +7,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/fullstorydev/grpcui/standalone"
 	"github.com/sirupsen/logrus"
+	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
@@ -45,11 +45,10 @@ func (p pgURL) String() string {
 }
 
 var (
-	port     = flag.Int("port", 10000, "The gRPC server port")
-	httpPort = flag.Int("http_port", 11000, "The HTTP UI server port")
-	cert     = flag.String("cert", "./insecure/cert.pem", "The path to the server certificate file in PEM format")
-	key      = flag.String("key", "./insecure/key.pem", "The path to the server private key in PEM format")
-	u        pgURL
+	port = flag.Int("port", 10000, "The server port")
+	cert = flag.String("cert", "./insecure/cert.pem", "The path to the server certificate file in PEM format")
+	key  = flag.String("key", "./insecure/key.pem", "The path to the server private key in PEM format")
+	u    pgURL
 )
 
 func main() {
@@ -58,7 +57,7 @@ func main() {
 
 	log := logrus.New()
 	log.Formatter = &logrus.TextFormatter{
-		TimestampFormat: time.RFC3339,
+		TimestampFormat: time.StampMilli,
 		FullTimestamp:   true,
 	}
 
@@ -70,15 +69,27 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("Failed to parse certificate and key")
 	}
-	tlsCert.Leaf, _ = x509.ParseCertificate(tlsCert.Certificate[0])
-
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	tlsCert.Leaf, _ = x509.ParseCertificate(tlsCert.Certificate[0]) // Can't fail if LoadX509KeyPair succeeded
+	tc := &tls.Config{
+		Certificates: []tls.Certificate{tlsCert},
+	}
+	lis, err := tls.Listen("tcp", fmt.Sprintf(":%d", *port), tc)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to listen")
 	}
-	s := grpc.NewServer(
-		grpc.Creds(credentials.NewServerTLSFromCert(&tlsCert)),
-	)
+
+	mux := cmux.New(lis)
+	grpcL := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
+	httpL := mux.Match(cmux.Any())
+
+	go func() {
+		sErr := mux.Serve()
+		if sErr != nil {
+			log.WithError(err).Fatal("Failed to serve cmux")
+		}
+	}()
+
+	s := grpc.NewServer()
 	reflection.Register(s)
 
 	dir, err := users.NewDirectory(log, (*url.URL)(&u))
@@ -89,8 +100,11 @@ func main() {
 
 	// Serve gRPC Server
 	go func() {
-		log.Info("Serving gRPC on ", lis.Addr().String())
-		log.Fatal(s.Serve(lis))
+		log.Info("Serving gRPC on ", grpcL.Addr().String())
+		sErr := s.Serve(grpcL)
+		if sErr != nil {
+			log.WithError(err).Fatal("Failed to serve gRPC")
+		}
 	}()
 
 	cp := x509.NewCertPool()
@@ -117,11 +131,13 @@ func main() {
 	}
 
 	httpS := &http.Server{
-		Addr:    fmt.Sprintf(":%d", *httpPort),
 		Handler: handler,
 	}
 
 	// Serve HTTP Server
-	log.Info("Serving HTTP UI on http://localhost", httpS.Addr)
-	log.Fatal(httpS.ListenAndServe())
+	log.Info("Serving Web UI on https://localhost:", *port)
+	err = httpS.Serve(httpL)
+	if err != http.ErrServerClosed {
+		log.WithError(err).Fatal("Failed to serve Web UI")
+	}
 }

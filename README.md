@@ -15,12 +15,13 @@ Start the server:
 ```bash
 $ go run main.go --postgres-url psql://postgres:mypass@localhost:5432/postgres
 ...
-INFO[2019-05-13T23:09:19+01:00] Serving gRPC on [::]:10000
-INFO[2019-05-13T23:09:19+01:00] Serving HTTP UI on http://localhost:11000
+INFO[May 21 22:51:37.091] Serving gRPC on [::]:10000
+INFO[May 21 22:51:37.156] Serving Web UI on https://localhost:10000
 ```
 
-Navigate to http://localhost:11000 to see the auto-generated web UI for the
-service, courtesy of gRPC reflection and github.com/fullstorydev/grpcui!
+Navigate to http://localhost:10000 to see the auto-generated web UI for the
+service, courtesy of gRPC reflection and
+[github.com/fullstorydev/grpcui](github.com/fullstorydev/grpcui)!
 
 ## Developing
 
