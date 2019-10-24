@@ -23,6 +23,8 @@ Navigate to http://localhost:10000 to see the auto-generated web UI for the
 service, courtesy of gRPC reflection and
 [github.com/fullstorydev/grpcui](https://github.com/fullstorydev/grpcui/)!
 
+![gRPCUI](./grpcui.png)
+
 ## Developing
 
 ### Requirements
