@@ -10,13 +10,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gogo/status"
 	"github.com/golang/mock/gomock"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/google/go-cmp/cmp"
 	"github.com/ory/dockertest"
 	"github.com/ory/dockertest/docker"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/testing/protocmp"
 
 	pbUsers "github.com/johanbrandhorst/grpc-postgres/proto"
 	"github.com/johanbrandhorst/grpc-postgres/users"
@@ -58,11 +60,12 @@ func TestMain(m *testing.M) {
 	pw, _ := pgURL.User.Password()
 	runOpts := dockertest.RunOptions{
 		Repository: "postgres",
-		Tag:        "latest",
+		Tag:        "12-alpine",
 		Env: []string{
 			"POSTGRES_USER=" + pgURL.User.Username(),
 			"POSTGRES_PASSWORD=" + pw,
 			"POSTGRES_DB=" + pgURL.Path,
+			"POSTGRES_HOST_AUTH_METHOD=trust", // https://github.com/docker-library/postgres/issues/681
 		},
 	}
 
@@ -108,7 +111,7 @@ func TestMain(m *testing.M) {
 
 	pool.MaxWait = 10 * time.Second
 	err = pool.Retry(func() error {
-		db, err := sql.Open("postgres", pgURL.String())
+		db, err := sql.Open("pgx", pgURL.String())
 		if err != nil {
 			return err
 		}
@@ -173,11 +176,8 @@ func TestAddDeleteUser(t *testing.T) {
 			t.Fatalf("Failed to delete user: %s", err)
 		}
 
-		if user1.GetRole() != user2.GetRole() ||
-			user1.GetId() != user2.GetId() ||
-			user1.GetCreateTime().GetNanos() != user2.GetCreateTime().GetNanos() ||
-			user1.GetCreateTime().GetSeconds() != user2.GetCreateTime().GetSeconds() {
-			t.Fatalf("Deleted user differed from created user:\n%#v\n%#v", user1, user2)
+		if diff := cmp.Diff(user1, user2, protocmp.Transform()); diff != "" {
+			t.Fatalf("Deleted user differed from created user:\n%s", diff)
 		}
 	})
 

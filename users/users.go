@@ -3,12 +3,14 @@ package users
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"net/url"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/jackc/pgx"
-	"github.com/jackc/pgx/log/logrusadapter"
-	"github.com/jackc/pgx/stdlib"
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/log/logrusadapter"
+	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -26,17 +28,17 @@ type Directory struct {
 // NewDirectory creates a new Directory, connecting it to the postgres server on
 // the URL provided.
 func NewDirectory(logger *logrus.Logger, pgURL *url.URL) (*Directory, error) {
-	c, err := pgx.ParseURI((pgURL.String()))
+	c, err := pgx.ParseConfig(pgURL.String())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing postgres URI: %w", err)
 	}
 
 	c.Logger = logrusadapter.NewLogger(logger)
-	db := stdlib.OpenDB(c)
 
+	db := stdlib.OpenDB(*c)
 	err = validateSchema(db)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("validating schema: %w", err)
 	}
 
 	return &Directory{
@@ -79,7 +81,7 @@ func (d Directory) DeleteUser(ctx context.Context, req *pbUsers.DeleteUserReques
 
 	user, err := scanUser(d.db.QueryRowContext(ctx, q, args...))
 	if err != nil {
-		if pgErr, ok := err.(pgx.PgError); ok && pgErr.Code == "22P02" {
+		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "22P02" {
 			return nil, status.Error(codes.InvalidArgument, "invalid UUID provided")
 		}
 		return nil, err

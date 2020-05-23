@@ -7,7 +7,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/duration"
 	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/jackc/pgx/pgtype"
+	"github.com/jackc/pgtype"
 
 	pbUsers "github.com/johanbrandhorst/grpc-postgres/proto"
 )
@@ -48,8 +48,8 @@ func (rw *roleWrapper) Scan(in interface{}) error {
 type timeWrapper timestamp.Timestamp
 
 // Value implements database/sql/driver.Valuer for timestamp.Timestamp
-func (tw timeWrapper) Value() (driver.Value, error) {
-	return ptypes.Timestamp((*timestamp.Timestamp)(&tw))
+func (tw *timeWrapper) Value() (driver.Value, error) {
+	return ptypes.Timestamp((*timestamp.Timestamp)(tw))
 }
 
 // Scan implements database/sql/driver.Scanner for timestamp.Timestamp
@@ -60,12 +60,11 @@ func (tw *timeWrapper) Scan(in interface{}) error {
 		return err
 	}
 
-	tp, err := ptypes.TimestampProto(t.Time)
-	if err != nil {
-		return err
-	}
+	*tw = timeWrapper(timestamp.Timestamp{
+		Seconds: t.Time.Unix(),
+		Nanos:   int32(t.Time.Nanosecond()),
+	})
 
-	*tw = (timeWrapper)(*tp)
 	return nil
 }
 
