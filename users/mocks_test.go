@@ -7,7 +7,7 @@ package users_test
 import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
-	proto "github.com/johanbrandhorst/grpc-postgres/proto"
+	users "github.com/johanbrandhorst/grpc-postgres/proto"
 	metadata "google.golang.org/grpc/metadata"
 	reflect "reflect"
 )
@@ -64,7 +64,7 @@ func (mr *MockUserService_ListUsersServerMockRecorder) RecvMsg(arg0 interface{})
 }
 
 // Send mocks base method
-func (m *MockUserService_ListUsersServer) Send(arg0 *proto.User) error {
+func (m *MockUserService_ListUsersServer) Send(arg0 *users.User) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Send", arg0)
 	ret0, _ := ret[0].(error)
