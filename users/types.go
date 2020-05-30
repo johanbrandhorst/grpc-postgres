@@ -71,8 +71,8 @@ func (tw *timeWrapper) Scan(in interface{}) error {
 type durationWrapper duration.Duration
 
 // Value implements database/sql/driver.Valuer for duration.Duration
-func (dw durationWrapper) Value() (driver.Value, error) {
-	d, err := ptypes.Duration((*duration.Duration)(&dw))
+func (dw *durationWrapper) Value() (driver.Value, error) {
+	d, err := ptypes.Duration((*duration.Duration)(dw))
 	if err != nil {
 		return nil, err
 	}
