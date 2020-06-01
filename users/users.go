@@ -68,18 +68,15 @@ func (d Directory) AddUser(ctx context.Context, req *pbUsers.AddUserRequest) (*p
 
 // DeleteUser deletes the user, if found.
 func (d Directory) DeleteUser(ctx context.Context, req *pbUsers.DeleteUserRequest) (*pbUsers.User, error) {
-	q, args, err := d.sb.Delete(
+	q := d.sb.Delete(
 		"users",
 	).Where(squirrel.Eq{
 		"id": req.GetId(),
 	}).Suffix(
 		"RETURNING id, role, create_time",
-	).ToSql()
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	)
 
-	user, err := scanUser(d.db.QueryRowContext(ctx, q, args...))
+	user, err := scanUser(q.QueryRowContext(ctx))
 	if err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "22P02" {
 			return nil, status.Error(codes.InvalidArgument, "invalid UUID provided")
