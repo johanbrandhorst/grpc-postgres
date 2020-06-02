@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go v0.57.0 // indirect
 	github.com/Masterminds/squirrel v1.4.0
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
+	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/cncf/udpa/go v0.0.0-20200508205342-3b31d022a144 // indirect
 	github.com/containerd/containerd v1.3.4 // indirect
@@ -19,11 +20,11 @@ require (
 	github.com/golang/mock v1.4.3
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.4.1
+	github.com/google/gxui v0.0.0-20151028112939-f85e0a97b3a4 // indirect
 	github.com/gotestyourself/gotestyourself v2.2.0+incompatible // indirect
 	github.com/jackc/pgconn v1.5.0
 	github.com/jackc/pgtype v1.3.0
 	github.com/jackc/pgx/v4 v4.6.0
-	github.com/jteeuwen/go-bindata v3.0.7+incompatible
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lib/pq v1.5.2 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
@@ -32,7 +33,11 @@ require (
 	github.com/ory/dockertest v3.3.5+incompatible
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.6.0
+	github.com/smartystreets/goconvey v1.6.4 // indirect
 	github.com/soheilhy/cmux v0.1.4
+	github.com/tmthrgd/go-bindata v0.0.0-20190904063317-a4b65675e0fb
+	github.com/tmthrgd/go-rand v0.0.0-20190904060720-34764beea44d // indirect
+	github.com/zach-klippenstein/goregen v0.0.0-20160303162051-795b5e3961ea // indirect
 	golang.org/x/crypto v0.0.0-20200510223506-06a226fb4e37 // indirect
 	golang.org/x/mod v0.3.0 // indirect
 	golang.org/x/net v0.0.0-20200520182314-0ba52f642ac2 // indirect
