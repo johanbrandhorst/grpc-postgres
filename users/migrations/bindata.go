@@ -2,7 +2,6 @@
 //  memcopy: true
 //  compress: true
 //  decompress: once
-//  metadata: true
 //  asset-dir: true
 //  restore: true
 // sources:
@@ -28,8 +27,6 @@ type asset struct {
 	name string
 	data string
 	size int64
-	mode os.FileMode
-	time time.Time
 
 	once  sync.Once
 	bytes []byte
@@ -45,11 +42,11 @@ func (a *asset) Size() int64 {
 }
 
 func (a *asset) Mode() os.FileMode {
-	return a.mode
+	return 0
 }
 
 func (a *asset) ModTime() time.Time {
-	return a.time
+	return time.Time{}
 }
 
 func (*asset) IsDir() bool {
@@ -69,8 +66,6 @@ var _bindata = map[string]*asset{
 			"\x2d\x2a\x56\x70\x76\x0c\x76\x76\x74\x71\xb5\xe6\x82\xa8\x89\x0c\x70\x55\x28\xca\xcf\x49\xb5\xe6" +
 			"\x02\x04\x00\x00\xff\xff",
 		size: 52,
-		mode: 0644,
-		time: time.Unix(1571926604, 95801090),
 	},
 	"1_initial_schema.up.sql": &asset{
 		name: "1_initial_schema.up.sql",
@@ -85,8 +80,6 @@ var _bindata = map[string]*asset{
 			"\x59\xe3\xc5\xf0\x53\x2a\xf1\x56\x59\xfa\xbf\xe2\xec\x9d\x23\xcb\xdd\x5d\xa8\xfc\xa4\xbe\x02\x00" +
 			"\x00\xff\xff",
 		size: 275,
-		mode: 0644,
-		time: time.Unix(1591130107, 842219247),
 	},
 }
 
