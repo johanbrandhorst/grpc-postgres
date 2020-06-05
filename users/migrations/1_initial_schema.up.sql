@@ -1,5 +1,3 @@
-CREATE EXTENSION pgcrypto;
-
 CREATE TYPE role AS ENUM ('guest', 'member', 'admin');
 
 CREATE TABLE users (
