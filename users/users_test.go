@@ -3,9 +3,9 @@ package users_test
 import (
 	"context"
 	"database/sql"
+	"log"
 	"net"
 	"net/url"
-	"os"
 	"runtime"
 	"testing"
 	"time"
@@ -24,26 +24,10 @@ import (
 	"github.com/johanbrandhorst/grpc-postgres/users"
 )
 
-var (
-	log *logrus.Logger
+func startDatabase(tb testing.TB) *url.URL {
+	tb.Helper()
 
-	pgURL *url.URL
-)
-
-func TestMain(m *testing.M) {
-	code := 0
-	defer func() {
-		os.Exit(code)
-	}()
-
-	log = logrus.New()
-	log.Formatter = &logrus.TextFormatter{
-		TimestampFormat: time.RFC3339,
-		FullTimestamp:   true,
-		ForceColors:     true,
-	}
-
-	pgURL = &url.URL{
+	pgURL := &url.URL{
 		Scheme: "postgres",
 		User:   url.UserPassword("myuser", "mypass"),
 		Path:   "mydatabase",
@@ -54,7 +38,7 @@ func TestMain(m *testing.M) {
 
 	pool, err := dockertest.NewPool("")
 	if err != nil {
-		log.WithError(err).Fatal("Could not connect to docker")
+		tb.Fatalf("Could not connect to docker: %v", err)
 	}
 
 	pw, _ := pgURL.User.Password()
@@ -65,20 +49,19 @@ func TestMain(m *testing.M) {
 			"POSTGRES_USER=" + pgURL.User.Username(),
 			"POSTGRES_PASSWORD=" + pw,
 			"POSTGRES_DB=" + pgURL.Path,
-			"POSTGRES_HOST_AUTH_METHOD=trust", // https://github.com/docker-library/postgres/issues/681
 		},
 	}
 
 	resource, err := pool.RunWithOptions(&runOpts)
 	if err != nil {
-		log.WithError(err).Fatal("Could start postgres container")
+		tb.Fatalf("Could not start postgres container: %v", err)
 	}
-	defer func() {
+	tb.Cleanup(func() {
 		err = pool.Purge(resource)
 		if err != nil {
-			log.WithError(err).Error("Could not purge resource")
+			tb.Fatalf("Could not purge container: %v", err)
 		}
-	}()
+	})
 
 	pgURL.Host = resource.Container.NetworkSettings.IPAddress
 
@@ -96,50 +79,62 @@ func TestMain(m *testing.M) {
 		Stream:       true,
 	})
 	if err != nil {
-		log.WithError(err).Fatal("Could not connect to postgres container log output")
+		tb.Fatalf("Could not connect to postgres container log output: %v", err)
 	}
-	defer func() {
+
+	tb.Cleanup(func() {
 		err = logWaiter.Close()
 		if err != nil {
-			log.WithError(err).Error("Could not close container log")
+			tb.Fatalf("Could not close container log: %v", err)
 		}
 		err = logWaiter.Wait()
 		if err != nil {
-			log.WithError(err).Error("Could not wait for container log to close")
+			tb.Fatalf("Could not wait for container log to close: %v", err)
 		}
-	}()
+	})
 
 	pool.MaxWait = 10 * time.Second
-	err = pool.Retry(func() error {
+	err = pool.Retry(func() (err error) {
 		db, err := sql.Open("pgx", pgURL.String())
 		if err != nil {
 			return err
 		}
+		defer func() {
+			cerr := db.Close()
+			if err == nil {
+				err = cerr
+			}
+		}()
+
 		return db.Ping()
 	})
 	if err != nil {
-		log.WithError(err).Fatal("Could not connect to postgres server")
+		tb.Fatalf("Could not connect to postgres container: %v", err)
 	}
 
-	code = m.Run()
+	return pgURL
 }
 
 func TestAddDeleteUser(t *testing.T) {
-	d, err := users.NewDirectory(log, pgURL)
+	t.Parallel()
+
+	d, err := users.NewDirectory(logrus.New(), startDatabase(t))
 	if err != nil {
 		t.Fatalf("Failed to create a new directory: %s", err)
 	}
-	defer func() {
+	t.Cleanup(func() {
 		err = d.Close()
 		if err != nil {
 			t.Errorf("Failed to close directory: %s", err)
 		}
-	}()
+	})
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	t.Cleanup(cancel)
 
 	t.Run("When deleting an added user", func(t *testing.T) {
+		t.Parallel()
+
 		role := pbUsers.Role_ADMIN
 		user1, err := d.AddUser(ctx, &pbUsers.AddUserRequest{
 			Role: role,
@@ -182,6 +177,8 @@ func TestAddDeleteUser(t *testing.T) {
 	})
 
 	t.Run("When using a non-uuid in DeleteUser", func(t *testing.T) {
+		t.Parallel()
+
 		_, err = d.DeleteUser(ctx, &pbUsers.DeleteUserRequest{
 			Id: "not_a_UUID",
 		})
@@ -192,19 +189,21 @@ func TestAddDeleteUser(t *testing.T) {
 }
 
 func TestListUsers(t *testing.T) {
-	d, err := users.NewDirectory(log, pgURL)
+	t.Parallel()
+
+	d, err := users.NewDirectory(logrus.New(), startDatabase(t))
 	if err != nil {
 		t.Fatalf("Failed to create a new directory: %s", err)
 	}
-	defer func() {
+	t.Cleanup(func() {
 		err = d.Close()
 		if err != nil {
 			t.Errorf("Failed to close directory: %s", err)
 		}
-	}()
+	})
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	t.Cleanup(cancel)
 
 	user1, err := d.AddUser(ctx, &pbUsers.AddUserRequest{
 		Role: pbUsers.Role_GUEST,
@@ -234,6 +233,8 @@ func TestListUsers(t *testing.T) {
 	}
 
 	t.Run("Returning all users", func(t *testing.T) {
+		t.Parallel()
+
 		ctrl := gomock.NewController(t)
 		srv := NewMockUserService_ListUsersServer(ctrl)
 		srv.EXPECT().Context().Return(ctx)
@@ -249,6 +250,8 @@ func TestListUsers(t *testing.T) {
 	})
 
 	t.Run("Filtering by age", func(t *testing.T) {
+		t.Parallel()
+
 		ctrl := gomock.NewController(t)
 		srv := NewMockUserService_ListUsersServer(ctrl)
 		srv.EXPECT().Context().Return(ctx)
@@ -271,6 +274,8 @@ func TestListUsers(t *testing.T) {
 	})
 
 	t.Run("Filtering by create time", func(t *testing.T) {
+		t.Parallel()
+
 		ctrl := gomock.NewController(t)
 		srv := NewMockUserService_ListUsersServer(ctrl)
 		srv.EXPECT().Context().Return(ctx)
@@ -287,6 +292,8 @@ func TestListUsers(t *testing.T) {
 	})
 
 	t.Run("Filtering by age and create time", func(t *testing.T) {
+		t.Parallel()
+
 		ctrl := gomock.NewController(t)
 		srv := NewMockUserService_ListUsersServer(ctrl)
 		srv.EXPECT().Context().Return(ctx)
