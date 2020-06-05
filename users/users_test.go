@@ -44,7 +44,7 @@ func startDatabase(tb testing.TB) *url.URL {
 	pw, _ := pgURL.User.Password()
 	runOpts := dockertest.RunOptions{
 		Repository: "postgres",
-		Tag:        "12-alpine",
+		Tag:        "13-alpine",
 		Env: []string{
 			"POSTGRES_USER=" + pgURL.User.Username(),
 			"POSTGRES_PASSWORD=" + pw,
