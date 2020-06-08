@@ -3,7 +3,6 @@ package users_test
 import (
 	"context"
 	"database/sql"
-	"log"
 	"net"
 	"net/url"
 	"runtime"
@@ -24,7 +23,7 @@ import (
 	"github.com/johanbrandhorst/grpc-postgres/users"
 )
 
-func startDatabase(tb testing.TB) *url.URL {
+func startDatabase(tb testing.TB, log *logrus.Logger) *url.URL {
 	tb.Helper()
 
 	pgURL := &url.URL{
@@ -114,7 +113,8 @@ func startDatabase(tb testing.TB) *url.URL {
 func TestAddDeleteUser(t *testing.T) {
 	t.Parallel()
 
-	d, err := users.NewDirectory(logrus.New(), startDatabase(t))
+	log := logrus.New()
+	d, err := users.NewDirectory(log, startDatabase(t, log))
 	if err != nil {
 		t.Fatalf("Failed to create a new directory: %s", err)
 	}
@@ -187,7 +187,8 @@ func TestAddDeleteUser(t *testing.T) {
 func TestListUsers(t *testing.T) {
 	t.Parallel()
 
-	d, err := users.NewDirectory(logrus.New(), startDatabase(t))
+	log := logrus.New()
+	d, err := users.NewDirectory(log, startDatabase(t, log))
 	if err != nil {
 		t.Fatalf("Failed to create a new directory: %s", err)
 	}
