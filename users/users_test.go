@@ -42,17 +42,13 @@ func startDatabase(tb testing.TB) *url.URL {
 	}
 
 	pw, _ := pgURL.User.Password()
-	runOpts := dockertest.RunOptions{
-		Repository: "postgres",
-		Tag:        "13-alpine",
-		Env: []string{
-			"POSTGRES_USER=" + pgURL.User.Username(),
-			"POSTGRES_PASSWORD=" + pw,
-			"POSTGRES_DB=" + pgURL.Path,
-		},
+	env := []string{
+		"POSTGRES_USER=" + pgURL.User.Username(),
+		"POSTGRES_PASSWORD=" + pw,
+		"POSTGRES_DB=" + pgURL.Path,
 	}
 
-	resource, err := pool.RunWithOptions(&runOpts)
+	resource, err := pool.Run("postgres", "13-alpine", env)
 	if err != nil {
 		tb.Fatalf("Could not start postgres container: %v", err)
 	}
