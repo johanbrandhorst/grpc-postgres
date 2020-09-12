@@ -6,14 +6,14 @@ An example repo of how I like to use postgres with gRPC
 First, start a postgres container:
 
 ```bash
-$ docker run --rm -d --name postgres -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=mypass -e POSTGRES_DB=postgres postgres
+$ docker run --rm -d --name postgres -p 5432:5432 -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=mypass -e POSTGRES_DB=postgres postgres:13
 d1a2eb0fb44da9c3488184f5296da28d1c7f88bd32bd4ec81fc254f006886b03
 ```
 
 Start the server:
 
 ```bash
-$ go run main.go --postgres-url psql://postgres:mypass@localhost:5432/postgres
+$ go run main.go --postgres-url postgresql://postgres:mypass@localhost:5432/postgres
 ...
 INFO[May 21 22:51:37.091] Serving gRPC on [::]:10000
 INFO[May 21 22:51:37.156] Serving Web UI on https://localhost:10000
