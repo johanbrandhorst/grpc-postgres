@@ -9,6 +9,7 @@ option go_package = "github.com/johanbrandhorst/grpc-postgres/proto;users";
 
 service UserService {
     rpc AddUser(AddUserRequest) returns (User) {}
+    rpc GetUser(GetUserRequest) returns (User) {}
     rpc DeleteUser(DeleteUserRequest) returns (User) {}
     rpc ListUsers(ListUsersRequest) returns (stream User) {}
 }
@@ -31,6 +32,10 @@ message UserRole {
 
 message AddUserRequest {
     Role role = 1;
+}
+
+message GetUserRequest {
+    string id = 1;
 }
 
 message DeleteUserRequest {

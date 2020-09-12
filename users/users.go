@@ -7,7 +7,7 @@ import (
 	"net/url"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/jackc/pgconn"
+	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/log/logrusadapter"
 	"github.com/jackc/pgx/v4/stdlib"
@@ -20,9 +20,10 @@ import (
 
 // Directory stores a directory of users.
 type Directory struct {
-	logger *logrus.Logger
-	db     *sql.DB
-	sb     squirrel.StatementBuilderType
+	logger  *logrus.Logger
+	db      *sql.DB
+	sb      squirrel.StatementBuilderType
+	querier Querier
 }
 
 // NewDirectory creates a new Directory, connecting it to the postgres server on
@@ -34,17 +35,18 @@ func NewDirectory(logger *logrus.Logger, pgURL *url.URL) (*Directory, error) {
 	}
 
 	c.Logger = logrusadapter.NewLogger(logger)
-
 	db := stdlib.OpenDB(*c)
+
 	err = validateSchema(db)
 	if err != nil {
 		return nil, fmt.Errorf("validating schema: %w", err)
 	}
 
 	return &Directory{
-		logger: logger,
-		db:     db,
-		sb:     squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar).RunWith(db),
+		logger:  logger,
+		db:      db,
+		sb:      squirrel.StatementBuilder.PlaceholderFormat(squirrel.Dollar).RunWith(db),
+		querier: New(db),
 	}, nil
 }
 
@@ -53,38 +55,45 @@ func (d Directory) Close() error {
 	return d.db.Close()
 }
 
-// AddUser adds a user to the directory
+// AddUser adds a user to the directory.
 func (d Directory) AddUser(ctx context.Context, req *pbUsers.AddUserRequest) (*pbUsers.User, error) {
-	q := d.sb.Insert(
-		"users",
-	).SetMap(map[string]interface{}{
-		"role": (roleWrapper)(req.GetRole()),
-	}).Suffix(
-		"RETURNING id, role, create_time",
-	)
+	pgRole, err := roleProtoToPostgres(req.Role)
+	if err != nil {
+		return nil, err
+	}
+	pgUser, err := d.querier.AddUser(ctx, pgRole)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "unexpected error: %v", err)
+	}
+	return userPostgresToProto(pgUser)
+}
 
-	return scanUser(q.QueryRowContext(ctx))
+// GetUser gets a user from the directory.
+func (d Directory) GetUser(ctx context.Context, req *pbUsers.GetUserRequest) (*pbUsers.User, error) {
+	var userID pgtype.UUID
+	err := userID.Set(req.GetId)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid UUID provided")
+	}
+	pgUser, err := d.querier.GetUser(ctx, userID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "unexpected error: %v", err)
+	}
+	return userPostgresToProto(pgUser)
 }
 
 // DeleteUser deletes the user, if found.
 func (d Directory) DeleteUser(ctx context.Context, req *pbUsers.DeleteUserRequest) (*pbUsers.User, error) {
-	q := d.sb.Delete(
-		"users",
-	).Where(squirrel.Eq{
-		"id": req.GetId(),
-	}).Suffix(
-		"RETURNING id, role, create_time",
-	)
-
-	user, err := scanUser(q.QueryRowContext(ctx))
+	var userID pgtype.UUID
+	err := userID.Set(req.GetId)
 	if err != nil {
-		if pgErr, ok := err.(*pgconn.PgError); ok && pgErr.Code == "22P02" {
-			return nil, status.Error(codes.InvalidArgument, "invalid UUID provided")
-		}
+		return nil, status.Error(codes.InvalidArgument, "invalid UUID provided")
+	}
+	pgUser, err := d.querier.DeleteUser(ctx, userID)
+	if err != nil {
 		return nil, err
 	}
-
-	return user, nil
+	return userPostgresToProto(pgUser)
 }
 
 // ListUsers lists users in the directory, subject to the request filters.
@@ -100,15 +109,25 @@ func (d Directory) ListUsers(req *pbUsers.ListUsersRequest, srv pbUsers.UserServ
 	)
 
 	if req.GetCreatedSince() != nil {
+		var pgTime pgtype.Timestamptz
+		err := pgTime.Set(req.GetCreatedSince().AsTime())
+		if err != nil {
+			return status.Errorf(codes.InvalidArgument, "invalid timestamp: %v", err)
+		}
 		q = q.Where(squirrel.Gt{
-			"create_time": (*timeWrapper)(req.GetCreatedSince()),
+			"create_time": pgTime,
 		})
 	}
 
 	if req.GetOlderThan() != nil {
+		var pgInterval pgtype.Interval
+		err := pgInterval.Set(req.GetOlderThan().AsDuration())
+		if err != nil {
+			return status.Errorf(codes.InvalidArgument, "invalid duration: %v", err)
+		}
 		q = q.Where(
 			squirrel.Expr(
-				"CURRENT_TIMESTAMP - create_time > ?", (*durationWrapper)(req.GetOlderThan()),
+				"CURRENT_TIMESTAMP - create_time > ?", pgInterval,
 			),
 		)
 	}
@@ -125,12 +144,20 @@ func (d Directory) ListUsers(req *pbUsers.ListUsersRequest, srv pbUsers.UserServ
 	}()
 
 	for rows.Next() {
-		user, err := scanUser(rows)
+		var pgUser User
+		err := rows.Scan(
+			&pgUser.ID,
+			&pgUser.Role,
+			&pgUser.CreateTime,
+		)
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
-
-		err = srv.Send(user)
+		protoUser, err := userPostgresToProto(pgUser)
+		if err != nil {
+			return err
+		}
+		err = srv.Send(protoUser)
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())
 		}
