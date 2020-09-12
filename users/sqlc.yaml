@@ -1,0 +1,14 @@
+version: "1"
+packages:
+  - name: "users"
+    path: "."
+    queries: "queries"
+    schema: "migrations"
+    engine: "postgresql"
+    emit_json_tags: false
+    emit_prepared_queries: false
+    emit_interface: true
+    emit_exact_table_names: false
+overrides:
+  - go_type: "github.com/jackc/pgtype.UUID"
+    db_type: "uuid"

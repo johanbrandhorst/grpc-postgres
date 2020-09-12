@@ -3,13 +3,12 @@ package users
 import (
 	"database/sql"
 
-	"github.com/Masterminds/squirrel"
 	migrate "github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	bindata "github.com/golang-migrate/migrate/v4/source/go_bindata"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pbUsers "github.com/johanbrandhorst/grpc-postgres/proto"
 	"github.com/johanbrandhorst/grpc-postgres/users/migrations"
@@ -40,21 +39,45 @@ func validateSchema(db *sql.DB) error {
 	return sourceInstance.Close()
 }
 
-func scanUser(row squirrel.RowScanner) (*pbUsers.User, error) {
-	var user pbUsers.User
-	user.CreateTime = new(timestamp.Timestamp)
-	err := row.Scan(
-		&user.Id,
-		(*roleWrapper)(&user.Role),
-		(*timeWrapper)(user.CreateTime),
-	)
+func userPostgresToProto(pgUser User) (*pbUsers.User, error) {
+	protoRole, err := rolePostgresToProto(pgUser.Role)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, status.Error(codes.NotFound, "no such user")
-		}
-
 		return nil, err
 	}
+	var userID string
+	err = pgUser.ID.AssignTo(&userID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to assign UUID to string: %v", err)
+	}
+	return &pbUsers.User{
+		CreateTime: timestamppb.New(pgUser.CreateTime),
+		Id:         userID,
+		Role:       protoRole,
+	}, nil
+}
 
-	return &user, nil
+func rolePostgresToProto(pgRole Role) (pbUsers.Role, error) {
+	switch pgRole {
+	case RoleGuest:
+		return pbUsers.Role_GUEST, nil
+	case RoleAdmin:
+		return pbUsers.Role_ADMIN, nil
+	case RoleMember:
+		return pbUsers.Role_MEMBER, nil
+	default:
+		return 0, status.Errorf(codes.Internal, "unknown role type %q", pgRole)
+	}
+}
+
+func roleProtoToPostgres(pbRole pbUsers.Role) (Role, error) {
+	switch pbRole {
+	case pbUsers.Role_GUEST:
+		return RoleGuest, nil
+	case pbUsers.Role_ADMIN:
+		return RoleAdmin, nil
+	case pbUsers.Role_MEMBER:
+		return RoleMember, nil
+	default:
+		return "", status.Errorf(codes.InvalidArgument, "unknown role type %q", pbRole)
+	}
 }

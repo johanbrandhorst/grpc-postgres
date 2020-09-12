@@ -6,10 +6,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	pbUsers "github.com/johanbrandhorst/grpc-postgres/proto"
 )
@@ -55,23 +55,17 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("Failed to add user")
 		}
-
-		t, err := ptypes.Timestamp(user.GetCreateTime())
-		if err != nil {
-			log.WithError(err).Error("Failed to list users")
-		}
-
 		log.WithFields(logrus.Fields{
 			"id":          user.GetId(),
 			"role":        user.GetRole().String(),
-			"create_time": t.Local().Format(time.RFC3339),
+			"create_time": user.GetCreateTime().AsTime().Local().Format(time.RFC3339),
 		}).Info("Added user")
 	}
 
 	lReq := new(pbUsers.ListUsersRequest)
 
 	if *olderThan != 0 {
-		lReq.OlderThan = ptypes.DurationProto(*olderThan)
+		lReq.OlderThan = durationpb.New(*olderThan)
 	}
 
 	srv, err := c.ListUsers(ctx, lReq)
@@ -88,15 +82,10 @@ func main() {
 			log.WithError(err).Fatal("Error while receiving users")
 		}
 
-		t, err := ptypes.Timestamp(user.GetCreateTime())
-		if err != nil {
-			log.WithError(err).Error("Failed to list users")
-		}
-
 		log.WithFields(logrus.Fields{
 			"id":          user.GetId(),
 			"role":        user.GetRole().String(),
-			"create_time": t.Local().Format(time.RFC3339),
+			"create_time": user.GetCreateTime().AsTime().Local().Format(time.RFC3339),
 		}).Info("Read user")
 	}
 
