@@ -3,23 +3,26 @@ package users_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"io"
 	"net"
 	"net/url"
 	"runtime"
 	"testing"
 	"time"
 
-	"github.com/golang/mock/gomock"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/google/go-cmp/cmp"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/testing/protocmp"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/emptypb"
 
-	pbUsers "github.com/johanbrandhorst/grpc-postgres/proto"
+	userspb "github.com/johanbrandhorst/grpc-postgres/proto"
 	"github.com/johanbrandhorst/grpc-postgres/users"
 )
 
@@ -131,8 +134,8 @@ func TestAddDeleteUser(t *testing.T) {
 	t.Run("When deleting an added user", func(t *testing.T) {
 		t.Parallel()
 
-		role := pbUsers.Role_ADMIN
-		user1, err := d.AddUser(ctx, &pbUsers.AddUserRequest{
+		role := userspb.Role_ADMIN
+		user1, err := d.AddUser(ctx, &userspb.AddUserRequest{
 			Role: role,
 		})
 		if err != nil {
@@ -146,12 +149,7 @@ func TestAddDeleteUser(t *testing.T) {
 			t.Fatal("CreateTime was not set")
 		}
 
-		tm, err := ptypes.Timestamp(user1.GetCreateTime())
-		if err != nil {
-			t.Fatalf("CreateTime could not be parsed: %s", err)
-		}
-
-		s := time.Since(tm)
+		s := time.Since(user1.CreateTime.AsTime())
 		if s > time.Second {
 			t.Errorf("CreateTime was longer than 1 second ago: %s", s)
 		}
@@ -160,7 +158,7 @@ func TestAddDeleteUser(t *testing.T) {
 			t.Error("Id was not set")
 		}
 
-		user2, err := d.DeleteUser(ctx, &pbUsers.DeleteUserRequest{
+		user2, err := d.DeleteUser(ctx, &userspb.DeleteUserRequest{
 			Id: user1.GetId(),
 		})
 		if err != nil {
@@ -175,7 +173,7 @@ func TestAddDeleteUser(t *testing.T) {
 	t.Run("When using a non-uuid in DeleteUser", func(t *testing.T) {
 		t.Parallel()
 
-		_, err = d.DeleteUser(ctx, &pbUsers.DeleteUserRequest{
+		_, err = d.DeleteUser(ctx, &userspb.DeleteUserRequest{
 			Id: "not_a_UUID",
 		})
 		if status.Code(err) != codes.InvalidArgument {
@@ -202,8 +200,8 @@ func TestListUsers(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	user1, err := d.AddUser(ctx, &pbUsers.AddUserRequest{
-		Role: pbUsers.Role_GUEST,
+	user1, err := d.AddUser(ctx, &userspb.AddUserRequest{
+		Role: userspb.Role_GUEST,
 	})
 	if err != nil {
 		t.Fatalf("Failed to add a user: %s", err)
@@ -212,8 +210,8 @@ func TestListUsers(t *testing.T) {
 	// Sleep so we have slightly different create times
 	time.Sleep(500 * time.Millisecond)
 
-	user2, err := d.AddUser(ctx, &pbUsers.AddUserRequest{
-		Role: pbUsers.Role_MEMBER,
+	user2, err := d.AddUser(ctx, &userspb.AddUserRequest{
+		Role: userspb.Role_MEMBER,
 	})
 	if err != nil {
 		t.Fatalf("Failed to add a user: %s", err)
@@ -222,8 +220,8 @@ func TestListUsers(t *testing.T) {
 	// Sleep so we have slightly different create times
 	time.Sleep(500 * time.Millisecond)
 
-	user3, err := d.AddUser(ctx, &pbUsers.AddUserRequest{
-		Role: pbUsers.Role_ADMIN,
+	user3, err := d.AddUser(ctx, &userspb.AddUserRequest{
+		Role: userspb.Role_ADMIN,
 	})
 	if err != nil {
 		t.Fatalf("Failed to add a user: %s", err)
@@ -232,83 +230,192 @@ func TestListUsers(t *testing.T) {
 	t.Run("Returning all users", func(t *testing.T) {
 		t.Parallel()
 
-		ctrl := gomock.NewController(t)
-		srv := NewMockUserService_ListUsersServer(ctrl)
-		srv.EXPECT().Context().Return(ctx)
-		srv.EXPECT().Send(user1).Return(nil)
-		srv.EXPECT().Send(user2).Return(nil)
-		srv.EXPECT().Send(user3).Return(nil)
+		srv := &listUsersSrvFake{
+			ctx: ctx,
+		}
 
-		err = d.ListUsers(&pbUsers.ListUsersRequest{}, srv)
+		err = d.ListUsers(new(userspb.ListUsersRequest), srv)
 		if err != nil {
 			t.Fatalf("Failed to list users: %s", err)
 		}
-		ctrl.Finish()
+
+		if len(srv.users) != 3 {
+			t.Fatal("Did not receive 3 users as expected")
+		}
+		if diff := cmp.Diff(srv.users[0], user1, protocmp.Transform()); diff != "" {
+			t.Errorf("First user didn't match user1: %s", diff)
+		}
+		if diff := cmp.Diff(srv.users[1], user2, protocmp.Transform()); diff != "" {
+			t.Errorf("Second user didn't match user2: %s", diff)
+		}
+		if diff := cmp.Diff(srv.users[2], user3, protocmp.Transform()); diff != "" {
+			t.Errorf("Third user didn't match user3: %s", diff)
+		}
 	})
 
 	t.Run("Filtering by age", func(t *testing.T) {
 		t.Parallel()
 
-		ctrl := gomock.NewController(t)
-		srv := NewMockUserService_ListUsersServer(ctrl)
-		srv.EXPECT().Context().Return(ctx)
-		srv.EXPECT().Send(user1).Return(nil)
-		srv.EXPECT().Send(user2).Return(nil)
-
-		tm, err := ptypes.Timestamp(user2.GetCreateTime())
-		if err != nil {
-			t.Fatalf("Failed to parse timestamp: %s", err)
+		srv := &listUsersSrvFake{
+			ctx: ctx,
 		}
-		olderThan := time.Since(tm)
 
-		err = d.ListUsers(&pbUsers.ListUsersRequest{
-			OlderThan: ptypes.DurationProto(olderThan),
+		olderThan := time.Since(user2.GetCreateTime().AsTime())
+
+		err = d.ListUsers(&userspb.ListUsersRequest{
+			OlderThan: durationpb.New(olderThan),
 		}, srv)
 		if err != nil {
 			t.Fatalf("Failed to list users: %s", err)
 		}
-		ctrl.Finish()
+
+		if len(srv.users) != 2 {
+			t.Fatal("Did not receive 2 users as expected")
+		}
+		if diff := cmp.Diff(srv.users[0], user1, protocmp.Transform()); diff != "" {
+			t.Errorf("First user didn't match user1: %s", diff)
+		}
+		if diff := cmp.Diff(srv.users[1], user2, protocmp.Transform()); diff != "" {
+			t.Errorf("Second user didn't match user2: %s", diff)
+		}
 	})
 
 	t.Run("Filtering by create time", func(t *testing.T) {
 		t.Parallel()
 
-		ctrl := gomock.NewController(t)
-		srv := NewMockUserService_ListUsersServer(ctrl)
-		srv.EXPECT().Context().Return(ctx)
-		srv.EXPECT().Send(user2).Return(nil)
-		srv.EXPECT().Send(user3).Return(nil)
+		srv := &listUsersSrvFake{
+			ctx: ctx,
+		}
 
-		err = d.ListUsers(&pbUsers.ListUsersRequest{
+		err = d.ListUsers(&userspb.ListUsersRequest{
 			CreatedSince: user1.GetCreateTime(),
 		}, srv)
 		if err != nil {
 			t.Fatalf("Failed to list users: %s", err)
 		}
-		ctrl.Finish()
+
+		if len(srv.users) != 2 {
+			t.Fatal("Did not receive 2 users as expected")
+		}
+		if diff := cmp.Diff(srv.users[0], user2, protocmp.Transform()); diff != "" {
+			t.Errorf("First user didn't match user2: %s", diff)
+		}
+		if diff := cmp.Diff(srv.users[1], user3, protocmp.Transform()); diff != "" {
+			t.Errorf("Second user didn't match user3: %s", diff)
+		}
 	})
 
 	t.Run("Filtering by age and create time", func(t *testing.T) {
 		t.Parallel()
 
-		ctrl := gomock.NewController(t)
-		srv := NewMockUserService_ListUsersServer(ctrl)
-		srv.EXPECT().Context().Return(ctx)
-		srv.EXPECT().Send(user2).Return(nil)
-
-		tm, err := ptypes.Timestamp(user2.GetCreateTime())
-		if err != nil {
-			t.Fatalf("Failed to parse timestamp: %s", err)
+		srv := &listUsersSrvFake{
+			ctx: ctx,
 		}
-		olderThan := time.Since(tm)
 
-		err = d.ListUsers(&pbUsers.ListUsersRequest{
+		olderThan := time.Since(user2.GetCreateTime().AsTime())
+
+		err = d.ListUsers(&userspb.ListUsersRequest{
 			CreatedSince: user1.GetCreateTime(),
-			OlderThan:    ptypes.DurationProto(olderThan),
+			OlderThan:    durationpb.New(olderThan),
 		}, srv)
 		if err != nil {
 			t.Fatalf("Failed to list users: %s", err)
 		}
-		ctrl.Finish()
+		if len(srv.users) != 1 {
+			t.Fatal("Did not receive 2 users as expected")
+		}
+		if diff := cmp.Diff(srv.users[0], user2, protocmp.Transform()); diff != "" {
+			t.Errorf("First user didn't match user2: %s", diff)
+		}
 	})
+}
+
+func TestAddUsers(t *testing.T) {
+	t.Parallel()
+
+	log := logrus.New()
+	d, err := users.NewDirectory(log, startDatabase(t, log))
+	if err != nil {
+		t.Fatalf("Failed to create a new directory: %s", err)
+	}
+	t.Cleanup(func() {
+		err = d.Close()
+		if err != nil {
+			t.Errorf("Failed to close directory: %s", err)
+		}
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	numUsers := 10
+	t.Run(fmt.Sprintf("Add %d users", numUsers), func(t *testing.T) {
+		t.Parallel()
+
+		addSrv := &addUsersSrvFake{
+			ctx: ctx,
+		}
+		for i := 0; i < numUsers; i++ {
+			addSrv.reqs = append(addSrv.reqs, &userspb.AddUserRequest{
+				Role: userspb.Role_MEMBER,
+			})
+		}
+
+		err = d.AddUsers(addSrv)
+		if err != nil {
+			t.Fatalf("Failed to add users: %s", err)
+		}
+
+		listSrv := &listUsersSrvFake{
+			ctx: ctx,
+		}
+		err = d.ListUsers(new(userspb.ListUsersRequest), listSrv)
+		if err != nil {
+			t.Fatalf("Failed to list users: %s", err)
+		}
+		if len(listSrv.users) != numUsers {
+			t.Fatalf("Expected %d users, got %d", numUsers, len(listSrv.users))
+		}
+	})
+}
+
+type addUsersSrvFake struct {
+	grpc.ServerStream
+	reqs []*userspb.AddUserRequest
+	ctx  context.Context
+}
+
+func (a *addUsersSrvFake) SendAndClose(_ *emptypb.Empty) error {
+	return nil
+}
+
+func (a *addUsersSrvFake) Recv() (*userspb.AddUserRequest, error) {
+	if len(a.reqs) == 0 {
+		return nil, io.EOF
+	}
+	// Pop a request off the top
+	req := a.reqs[0]
+	a.reqs = a.reqs[1:]
+	return req, nil
+}
+
+// Context returns the context for this stream.
+func (a *addUsersSrvFake) Context() context.Context {
+	return a.ctx
+}
+
+type listUsersSrvFake struct {
+	grpc.ServerStream
+	ctx   context.Context
+	users []*userspb.User
+}
+
+func (l *listUsersSrvFake) Send(user *userspb.User) error {
+	l.users = append(l.users, user)
+	return nil
+}
+
+// Context returns the context for this stream.
+func (l *listUsersSrvFake) Context() context.Context {
+	return l.ctx
 }

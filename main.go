@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
-	pbUsers "github.com/johanbrandhorst/grpc-postgres/proto"
+	userspb "github.com/johanbrandhorst/grpc-postgres/proto"
 	"github.com/johanbrandhorst/grpc-postgres/users"
 )
 
@@ -92,12 +92,12 @@ func main() {
 	s := grpc.NewServer()
 	reflection.Register(s)
 
-	var dir pbUsers.UnstableUserServiceService
+	var dir userspb.UnstableUserServiceService
 	dir, err = users.NewDirectory(log, (*url.URL)(&u))
 	if err != nil {
 		log.WithError(err).Fatal("Failed to create user directory")
 	}
-	pbUsers.RegisterUserServiceService(s, pbUsers.NewUserServiceService(dir))
+	userspb.RegisterUserServiceService(s, userspb.NewUserServiceService(dir))
 
 	// Serve gRPC Server
 	go func() {

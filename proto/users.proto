@@ -4,11 +4,13 @@ package users;
 
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
 
 option go_package = "github.com/johanbrandhorst/grpc-postgres/proto;users";
 
 service UserService {
     rpc AddUser(AddUserRequest) returns (User) {}
+    rpc AddUsers(stream AddUserRequest) returns (google.protobuf.Empty) {}
     rpc GetUser(GetUserRequest) returns (User) {}
     rpc DeleteUser(DeleteUserRequest) returns (User) {}
     rpc ListUsers(ListUsersRequest) returns (stream User) {}
