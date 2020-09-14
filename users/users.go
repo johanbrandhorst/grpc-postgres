@@ -98,20 +98,6 @@ func (d Directory) AddUsers(srv userspb.UserService_AddUsersServer) error {
 	return srv.SendAndClose(new(emptypb.Empty))
 }
 
-// GetUser gets a user from the directory.
-func (d Directory) GetUser(ctx context.Context, req *userspb.GetUserRequest) (*userspb.User, error) {
-	var userID pgtype.UUID
-	err := userID.Set(req.GetId())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid UUID provided")
-	}
-	pgUser, err := d.querier.GetUser(ctx, userID)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "unexpected error getting user: %s", err.Error())
-	}
-	return userPostgresToProto(pgUser)
-}
-
 // DeleteUser deletes the user, if found.
 func (d Directory) DeleteUser(ctx context.Context, req *userspb.DeleteUserRequest) (*userspb.User, error) {
 	var userID pgtype.UUID

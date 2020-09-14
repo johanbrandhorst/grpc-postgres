@@ -20,7 +20,6 @@ const _ = grpc.SupportPackageIsVersion7
 type UserServiceClient interface {
 	AddUser(ctx context.Context, in *AddUserRequest, opts ...grpc.CallOption) (*User, error)
 	AddUsers(ctx context.Context, opts ...grpc.CallOption) (UserService_AddUsersClient, error)
-	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*User, error)
 	DeleteUser(ctx context.Context, in *DeleteUserRequest, opts ...grpc.CallOption) (*User, error)
 	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (UserService_ListUsersClient, error)
 }
@@ -85,19 +84,6 @@ func (x *userServiceAddUsersClient) CloseAndRecv() (*empty.Empty, error) {
 	return m, nil
 }
 
-var userServiceGetUserStreamDesc = &grpc.StreamDesc{
-	StreamName: "GetUser",
-}
-
-func (c *userServiceClient) GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*User, error) {
-	out := new(User)
-	err := c.cc.Invoke(ctx, "/users.UserService/GetUser", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 var userServiceDeleteUserStreamDesc = &grpc.StreamDesc{
 	StreamName: "DeleteUser",
 }
@@ -155,7 +141,6 @@ func (x *userServiceListUsersClient) Recv() (*User, error) {
 type UserServiceService struct {
 	AddUser    func(context.Context, *AddUserRequest) (*User, error)
 	AddUsers   func(UserService_AddUsersServer) error
-	GetUser    func(context.Context, *GetUserRequest) (*User, error)
 	DeleteUser func(context.Context, *DeleteUserRequest) (*User, error)
 	ListUsers  func(*ListUsersRequest, UserService_ListUsersServer) error
 }
@@ -179,23 +164,6 @@ func (s *UserServiceService) addUser(_ interface{}, ctx context.Context, dec fun
 }
 func (s *UserServiceService) addUsers(_ interface{}, stream grpc.ServerStream) error {
 	return s.AddUsers(&userServiceAddUsersServer{stream})
-}
-func (s *UserServiceService) getUser(_ interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetUserRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return s.GetUser(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     s,
-		FullMethod: "/users.UserService/GetUser",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return s.GetUser(ctx, req.(*GetUserRequest))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 func (s *UserServiceService) deleteUser(_ interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteUserRequest)
@@ -270,11 +238,6 @@ func RegisterUserServiceService(s grpc.ServiceRegistrar, srv *UserServiceService
 			return status.Errorf(codes.Unimplemented, "method AddUsers not implemented")
 		}
 	}
-	if srvCopy.GetUser == nil {
-		srvCopy.GetUser = func(context.Context, *GetUserRequest) (*User, error) {
-			return nil, status.Errorf(codes.Unimplemented, "method GetUser not implemented")
-		}
-	}
 	if srvCopy.DeleteUser == nil {
 		srvCopy.DeleteUser = func(context.Context, *DeleteUserRequest) (*User, error) {
 			return nil, status.Errorf(codes.Unimplemented, "method DeleteUser not implemented")
@@ -291,10 +254,6 @@ func RegisterUserServiceService(s grpc.ServiceRegistrar, srv *UserServiceService
 			{
 				MethodName: "AddUser",
 				Handler:    srvCopy.addUser,
-			},
-			{
-				MethodName: "GetUser",
-				Handler:    srvCopy.getUser,
 			},
 			{
 				MethodName: "DeleteUser",
@@ -338,11 +297,6 @@ func NewUserServiceService(s interface{}) *UserServiceService {
 		ns.AddUsers = h.AddUsers
 	}
 	if h, ok := s.(interface {
-		GetUser(context.Context, *GetUserRequest) (*User, error)
-	}); ok {
-		ns.GetUser = h.GetUser
-	}
-	if h, ok := s.(interface {
 		DeleteUser(context.Context, *DeleteUserRequest) (*User, error)
 	}); ok {
 		ns.DeleteUser = h.DeleteUser
@@ -362,7 +316,6 @@ func NewUserServiceService(s interface{}) *UserServiceService {
 type UnstableUserServiceService interface {
 	AddUser(context.Context, *AddUserRequest) (*User, error)
 	AddUsers(UserService_AddUsersServer) error
-	GetUser(context.Context, *GetUserRequest) (*User, error)
 	DeleteUser(context.Context, *DeleteUserRequest) (*User, error)
 	ListUsers(*ListUsersRequest, UserService_ListUsersServer) error
 }
