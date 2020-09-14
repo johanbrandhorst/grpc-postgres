@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/url"
 	"runtime"
@@ -376,6 +377,76 @@ func TestAddUsers(t *testing.T) {
 		if len(listSrv.users) != numUsers {
 			t.Fatalf("Expected %d users, got %d", numUsers, len(listSrv.users))
 		}
+	})
+}
+
+func BenchmarkAddUsers(b *testing.B) {
+	b.Skip("Benchmarks take a while to run")
+	log := logrus.New()
+	log.Out = ioutil.Discard
+	d, err := users.NewDirectory(log, startDatabase(b, log))
+	if err != nil {
+		b.Fatalf("Failed to create a new directory: %s", err)
+	}
+	b.Cleanup(func() {
+		err = d.Close()
+		if err != nil {
+			b.Errorf("Failed to close directory: %s", err)
+		}
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	b.Cleanup(cancel)
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		addSrv := &addUsersSrvFake{
+			ctx: ctx,
+		}
+		for pb.Next() {
+			addSrv.reqs = append(addSrv.reqs, &userspb.AddUserRequest{
+				Role: userspb.Role_MEMBER,
+			})
+		}
+
+		err = d.AddUsers(addSrv)
+		if err != nil {
+			b.Fatalf("Failed to add users: %s", err)
+		}
+	})
+}
+
+var benchmarkUser *userspb.User
+
+func BenchmarkAddUser(b *testing.B) {
+	b.Skip("Benchmarks take a while to run")
+	log := logrus.New()
+	log.Out = ioutil.Discard
+	d, err := users.NewDirectory(log, startDatabase(b, log))
+	if err != nil {
+		b.Fatalf("Failed to create a new directory: %s", err)
+	}
+	b.Cleanup(func() {
+		err = d.Close()
+		if err != nil {
+			b.Errorf("Failed to close directory: %s", err)
+		}
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	b.Cleanup(cancel)
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		var user *userspb.User
+		for pb.Next() {
+			user, err = d.AddUser(ctx, &userspb.AddUserRequest{Role: userspb.Role_MEMBER})
+			if err != nil {
+				b.Fatalf("Failed to add user: %s", err)
+			}
+		}
+		// Avoid compiler optimizing out the loop
+		benchmarkUser = user
 	})
 }
 
