@@ -12,7 +12,6 @@ require (
 	github.com/fullstorydev/grpcui v1.0.0
 	github.com/fullstorydev/grpcurl v1.7.0 // indirect
 	github.com/golang-migrate/migrate/v4 v4.12.2
-	github.com/golang/mock v1.4.4
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.2
 	github.com/google/gxui v0.0.0-20151028112939-f85e0a97b3a4 // indirect

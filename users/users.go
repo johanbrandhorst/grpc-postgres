@@ -14,8 +14,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
-	pbUsers "github.com/johanbrandhorst/grpc-postgres/proto"
+	userspb "github.com/johanbrandhorst/grpc-postgres/proto"
 )
 
 // Directory stores a directory of users.
@@ -56,36 +57,65 @@ func (d Directory) Close() error {
 }
 
 // AddUser adds a user to the directory.
-func (d Directory) AddUser(ctx context.Context, req *pbUsers.AddUserRequest) (*pbUsers.User, error) {
+func (d Directory) AddUser(ctx context.Context, req *userspb.AddUserRequest) (*userspb.User, error) {
 	pgRole, err := roleProtoToPostgres(req.Role)
 	if err != nil {
 		return nil, err
 	}
 	pgUser, err := d.querier.AddUser(ctx, pgRole)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "unexpected error: %v", err)
+		return nil, status.Errorf(codes.Internal, "unexpected error adding user: %s", err.Error())
 	}
 	return userPostgresToProto(pgUser)
 }
 
+// AddUsers adds a large amount of users efficiently.
+func (d Directory) AddUsers(srv userspb.UserService_AddUsersServer) error {
+	conn, err := d.db.Conn(srv.Context())
+	if err != nil {
+		status.Errorf(codes.Internal, "unexpected error getting connection: %s", err.Error())
+	}
+	err = conn.Raw(func(driverConn interface{}) error {
+		conn := driverConn.(*stdlib.Conn).Conn()
+		// CopyFrom uses the Postgres COPY protocol to perform bulk data insertion.
+		// CopyFrom can be faster than an insert with as few as 5 rows.
+		_, err = conn.CopyFrom(
+			srv.Context(),
+			pgx.Identifier{"users"},
+			[]string{"role"},
+			&usersSource{
+				getUser: srv.Recv,
+			},
+		)
+		if err != nil {
+			return status.Errorf(codes.Internal, "unexpected error inserting users: %s", err.Error())
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return srv.SendAndClose(new(emptypb.Empty))
+}
+
 // GetUser gets a user from the directory.
-func (d Directory) GetUser(ctx context.Context, req *pbUsers.GetUserRequest) (*pbUsers.User, error) {
+func (d Directory) GetUser(ctx context.Context, req *userspb.GetUserRequest) (*userspb.User, error) {
 	var userID pgtype.UUID
-	err := userID.Set(req.GetId)
+	err := userID.Set(req.GetId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid UUID provided")
 	}
 	pgUser, err := d.querier.GetUser(ctx, userID)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "unexpected error: %v", err)
+		return nil, status.Errorf(codes.Internal, "unexpected error getting user: %s", err.Error())
 	}
 	return userPostgresToProto(pgUser)
 }
 
 // DeleteUser deletes the user, if found.
-func (d Directory) DeleteUser(ctx context.Context, req *pbUsers.DeleteUserRequest) (*pbUsers.User, error) {
+func (d Directory) DeleteUser(ctx context.Context, req *userspb.DeleteUserRequest) (*userspb.User, error) {
 	var userID pgtype.UUID
-	err := userID.Set(req.GetId)
+	err := userID.Set(req.GetId())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid UUID provided")
 	}
@@ -97,7 +127,7 @@ func (d Directory) DeleteUser(ctx context.Context, req *pbUsers.DeleteUserReques
 }
 
 // ListUsers lists users in the directory, subject to the request filters.
-func (d Directory) ListUsers(req *pbUsers.ListUsersRequest, srv pbUsers.UserService_ListUsersServer) (err error) {
+func (d Directory) ListUsers(req *userspb.ListUsersRequest, srv userspb.UserService_ListUsersServer) (err error) {
 	q := d.sb.Select(
 		"id",
 		"role",
@@ -112,7 +142,7 @@ func (d Directory) ListUsers(req *pbUsers.ListUsersRequest, srv pbUsers.UserServ
 		var pgTime pgtype.Timestamptz
 		err := pgTime.Set(req.GetCreatedSince().AsTime())
 		if err != nil {
-			return status.Errorf(codes.InvalidArgument, "invalid timestamp: %v", err)
+			return status.Errorf(codes.InvalidArgument, "invalid timestamp: %s", err.Error())
 		}
 		q = q.Where(squirrel.Gt{
 			"create_time": pgTime,
@@ -123,7 +153,7 @@ func (d Directory) ListUsers(req *pbUsers.ListUsersRequest, srv pbUsers.UserServ
 		var pgInterval pgtype.Interval
 		err := pgInterval.Set(req.GetOlderThan().AsDuration())
 		if err != nil {
-			return status.Errorf(codes.InvalidArgument, "invalid duration: %v", err)
+			return status.Errorf(codes.InvalidArgument, "invalid duration: %s", err.Error())
 		}
 		q = q.Where(
 			squirrel.Expr(

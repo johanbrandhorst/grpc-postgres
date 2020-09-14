@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	pbUsers "github.com/johanbrandhorst/grpc-postgres/proto"
+	userspb "github.com/johanbrandhorst/grpc-postgres/proto"
 )
 
 var (
@@ -43,14 +43,14 @@ func main() {
 		log.WithError(err).Fatal("Failed to dial the server")
 	}
 
-	c := pbUsers.NewUserServiceClient(conn)
+	c := userspb.NewUserServiceClient(conn)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	if *add {
-		user, err := c.AddUser(ctx, &pbUsers.AddUserRequest{
-			Role: pbUsers.Role_GUEST,
+		user, err := c.AddUser(ctx, &userspb.AddUserRequest{
+			Role: userspb.Role_GUEST,
 		})
 		if err != nil {
 			log.WithError(err).Fatal("Failed to add user")
@@ -62,7 +62,7 @@ func main() {
 		}).Info("Added user")
 	}
 
-	lReq := new(pbUsers.ListUsersRequest)
+	lReq := new(userspb.ListUsersRequest)
 
 	if *olderThan != 0 {
 		lReq.OlderThan = durationpb.New(*olderThan)

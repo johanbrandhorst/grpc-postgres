@@ -4,6 +4,7 @@ package users
 
 import (
 	context "context"
+	empty "github.com/golang/protobuf/ptypes/empty"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -18,6 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UserServiceClient interface {
 	AddUser(ctx context.Context, in *AddUserRequest, opts ...grpc.CallOption) (*User, error)
+	AddUsers(ctx context.Context, opts ...grpc.CallOption) (UserService_AddUsersClient, error)
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*User, error)
 	DeleteUser(ctx context.Context, in *DeleteUserRequest, opts ...grpc.CallOption) (*User, error)
 	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (UserService_ListUsersClient, error)
@@ -42,6 +44,45 @@ func (c *userServiceClient) AddUser(ctx context.Context, in *AddUserRequest, opt
 		return nil, err
 	}
 	return out, nil
+}
+
+var userServiceAddUsersStreamDesc = &grpc.StreamDesc{
+	StreamName:    "AddUsers",
+	ClientStreams: true,
+}
+
+func (c *userServiceClient) AddUsers(ctx context.Context, opts ...grpc.CallOption) (UserService_AddUsersClient, error) {
+	stream, err := c.cc.NewStream(ctx, userServiceAddUsersStreamDesc, "/users.UserService/AddUsers", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &userServiceAddUsersClient{stream}
+	return x, nil
+}
+
+type UserService_AddUsersClient interface {
+	Send(*AddUserRequest) error
+	CloseAndRecv() (*empty.Empty, error)
+	grpc.ClientStream
+}
+
+type userServiceAddUsersClient struct {
+	grpc.ClientStream
+}
+
+func (x *userServiceAddUsersClient) Send(m *AddUserRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *userServiceAddUsersClient) CloseAndRecv() (*empty.Empty, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(empty.Empty)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 var userServiceGetUserStreamDesc = &grpc.StreamDesc{
@@ -113,6 +154,7 @@ func (x *userServiceListUsersClient) Recv() (*User, error) {
 // handler for that method returning an Unimplemented error.
 type UserServiceService struct {
 	AddUser    func(context.Context, *AddUserRequest) (*User, error)
+	AddUsers   func(UserService_AddUsersServer) error
 	GetUser    func(context.Context, *GetUserRequest) (*User, error)
 	DeleteUser func(context.Context, *DeleteUserRequest) (*User, error)
 	ListUsers  func(*ListUsersRequest, UserService_ListUsersServer) error
@@ -134,6 +176,9 @@ func (s *UserServiceService) addUser(_ interface{}, ctx context.Context, dec fun
 		return s.AddUser(ctx, req.(*AddUserRequest))
 	}
 	return interceptor(ctx, in, info, handler)
+}
+func (s *UserServiceService) addUsers(_ interface{}, stream grpc.ServerStream) error {
+	return s.AddUsers(&userServiceAddUsersServer{stream})
 }
 func (s *UserServiceService) getUser(_ interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetUserRequest)
@@ -177,6 +222,28 @@ func (s *UserServiceService) listUsers(_ interface{}, stream grpc.ServerStream) 
 	return s.ListUsers(m, &userServiceListUsersServer{stream})
 }
 
+type UserService_AddUsersServer interface {
+	SendAndClose(*empty.Empty) error
+	Recv() (*AddUserRequest, error)
+	grpc.ServerStream
+}
+
+type userServiceAddUsersServer struct {
+	grpc.ServerStream
+}
+
+func (x *userServiceAddUsersServer) SendAndClose(m *empty.Empty) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *userServiceAddUsersServer) Recv() (*AddUserRequest, error) {
+	m := new(AddUserRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 type UserService_ListUsersServer interface {
 	Send(*User) error
 	grpc.ServerStream
@@ -196,6 +263,11 @@ func RegisterUserServiceService(s grpc.ServiceRegistrar, srv *UserServiceService
 	if srvCopy.AddUser == nil {
 		srvCopy.AddUser = func(context.Context, *AddUserRequest) (*User, error) {
 			return nil, status.Errorf(codes.Unimplemented, "method AddUser not implemented")
+		}
+	}
+	if srvCopy.AddUsers == nil {
+		srvCopy.AddUsers = func(UserService_AddUsersServer) error {
+			return status.Errorf(codes.Unimplemented, "method AddUsers not implemented")
 		}
 	}
 	if srvCopy.GetUser == nil {
@@ -231,6 +303,11 @@ func RegisterUserServiceService(s grpc.ServiceRegistrar, srv *UserServiceService
 		},
 		Streams: []grpc.StreamDesc{
 			{
+				StreamName:    "AddUsers",
+				Handler:       srvCopy.addUsers,
+				ClientStreams: true,
+			},
+			{
 				StreamName:    "ListUsers",
 				Handler:       srvCopy.listUsers,
 				ServerStreams: true,
@@ -256,6 +333,11 @@ func NewUserServiceService(s interface{}) *UserServiceService {
 		ns.AddUser = h.AddUser
 	}
 	if h, ok := s.(interface {
+		AddUsers(UserService_AddUsersServer) error
+	}); ok {
+		ns.AddUsers = h.AddUsers
+	}
+	if h, ok := s.(interface {
 		GetUser(context.Context, *GetUserRequest) (*User, error)
 	}); ok {
 		ns.GetUser = h.GetUser
@@ -279,6 +361,7 @@ func NewUserServiceService(s interface{}) *UserServiceService {
 // use of this type is not recommended.
 type UnstableUserServiceService interface {
 	AddUser(context.Context, *AddUserRequest) (*User, error)
+	AddUsers(UserService_AddUsersServer) error
 	GetUser(context.Context, *GetUserRequest) (*User, error)
 	DeleteUser(context.Context, *DeleteUserRequest) (*User, error)
 	ListUsers(*ListUsersRequest, UserService_ListUsersServer) error
