@@ -235,7 +235,7 @@ func TestListUsers(t *testing.T) {
 			ctx: ctx,
 		}
 
-		err = d.ListUsers(new(userspb.ListUsersRequest), srv)
+		err := d.ListUsers(new(userspb.ListUsersRequest), srv)
 		if err != nil {
 			t.Fatalf("Failed to list users: %s", err)
 		}
@@ -263,7 +263,7 @@ func TestListUsers(t *testing.T) {
 
 		olderThan := time.Since(user2.GetCreateTime().AsTime())
 
-		err = d.ListUsers(&userspb.ListUsersRequest{
+		err := d.ListUsers(&userspb.ListUsersRequest{
 			OlderThan: durationpb.New(olderThan),
 		}, srv)
 		if err != nil {
@@ -288,7 +288,7 @@ func TestListUsers(t *testing.T) {
 			ctx: ctx,
 		}
 
-		err = d.ListUsers(&userspb.ListUsersRequest{
+		err := d.ListUsers(&userspb.ListUsersRequest{
 			CreatedSince: user1.GetCreateTime(),
 		}, srv)
 		if err != nil {
@@ -315,7 +315,7 @@ func TestListUsers(t *testing.T) {
 
 		olderThan := time.Since(user2.GetCreateTime().AsTime())
 
-		err = d.ListUsers(&userspb.ListUsersRequest{
+		err := d.ListUsers(&userspb.ListUsersRequest{
 			CreatedSince: user1.GetCreateTime(),
 			OlderThan:    durationpb.New(olderThan),
 		}, srv)
