@@ -3,7 +3,6 @@ install:
 		google.golang.org/protobuf/cmd/protoc-gen-go \
 		google.golang.org/grpc/cmd/protoc-gen-go-grpc \
 		github.com/tmthrgd/go-bindata/go-bindata \
-		github.com/golang/mock/mockgen \
 		github.com/bufbuild/buf/cmd/buf \
 		github.com/kyleconroy/sqlc/cmd/sqlc
 
