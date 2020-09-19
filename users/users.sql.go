@@ -11,29 +11,46 @@ import (
 
 const addUser = `-- name: AddUser :one
 INSERT INTO users (
-  role
+  role,
+  name
 ) VALUES (
-  $1
+  $1, 
+  $2
 )
-RETURNING id, role, create_time
+RETURNING id, role, create_time, name
 `
 
-func (q *Queries) AddUser(ctx context.Context, role Role) (User, error) {
-	row := q.db.QueryRowContext(ctx, addUser, role)
+type AddUserParams struct {
+	Role Role
+	Name string
+}
+
+func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, addUser, arg.Role, arg.Name)
 	var i User
-	err := row.Scan(&i.ID, &i.Role, &i.CreateTime)
+	err := row.Scan(
+		&i.ID,
+		&i.Role,
+		&i.CreateTime,
+		&i.Name,
+	)
 	return i, err
 }
 
 const deleteUser = `-- name: DeleteUser :one
 DELETE FROM users
 WHERE id = $1
-RETURNING id, role, create_time
+RETURNING id, role, create_time, name
 `
 
 func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) (User, error) {
 	row := q.db.QueryRowContext(ctx, deleteUser, id)
 	var i User
-	err := row.Scan(&i.ID, &i.Role, &i.CreateTime)
+	err := row.Scan(
+		&i.ID,
+		&i.Role,
+		&i.CreateTime,
+		&i.Name,
+	)
 	return i, err
 }

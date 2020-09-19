@@ -1,5 +1,20 @@
 # grpc-postgres
 An example repo of how I like to use postgres with gRPC
+```
+  +------------------------+
+  |   ____  ______  ___    |
+  |  /    )/      \/   \   |
+  | (     / __    _\    )  |
+  |  \    (/ o)  ( o)   )  |
+  |   \_  (_  )   \ )  /   |
+  |     \  /\_/    \)_/    |
+  |      \/  //|  |\\      |
+  |          v |  | v      |
+  |            \__/        |
+  |                        |
+  +------------------------+
+```
+Source: [Charles Clavadetscher](https://www.postgresql.org/message-id/57386570.8090703%40swisspug.org)
 
 ## Usage
 

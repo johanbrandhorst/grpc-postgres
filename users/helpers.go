@@ -56,6 +56,7 @@ func userPostgresToProto(pgUser User) (*userspb.User, error) {
 		CreateTime: timestamppb.New(pgUser.CreateTime),
 		Id:         userID,
 		Role:       protoRole,
+		Name:       pgUser.Name,
 	}, nil
 }
 
@@ -73,6 +74,7 @@ func userProtoToPostgres(protoUser *userspb.User) (User, error) {
 		ID:         userID,
 		CreateTime: protoUser.CreateTime.AsTime(),
 		Role:       pgRole,
+		Name:       protoUser.Name,
 	}, nil
 }
 
@@ -105,9 +107,9 @@ func roleProtoToPostgres(pbRole userspb.Role) (Role, error) {
 var _ pgx.CopyFromSource = (*usersSource)(nil)
 
 type usersSource struct {
-	getUser   func() (*userspb.AddUserRequest, error)
-	nextValue interface{}
-	err       error
+	getUser    func() (*userspb.AddUserRequest, error)
+	nextValues []interface{}
+	err        error
 }
 
 func (u *usersSource) Next() bool {
@@ -124,12 +126,12 @@ func (u *usersSource) Next() bool {
 	if u.err != nil {
 		return false
 	}
-	u.nextValue = pgRole
+	u.nextValues = []interface{}{pgRole, req.Name}
 	return true
 }
 
 func (u *usersSource) Values() ([]interface{}, error) {
-	return []interface{}{u.nextValue}, nil
+	return u.nextValues, nil
 }
 
 func (u *usersSource) Err() error {
