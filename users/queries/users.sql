@@ -1,8 +1,10 @@
 -- name: AddUser :one
 INSERT INTO users (
-  role
+  role,
+  name
 ) VALUES (
-  $1
+  $1, 
+  $2
 )
 RETURNING *;
 

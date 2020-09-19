@@ -62,7 +62,10 @@ func (d Directory) AddUser(ctx context.Context, req *userspb.AddUserRequest) (*u
 	if err != nil {
 		return nil, err
 	}
-	pgUser, err := d.querier.AddUser(ctx, pgRole)
+	pgUser, err := d.querier.AddUser(ctx, AddUserParams{
+		Role: pgRole,
+		Name: req.Name,
+	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "unexpected error adding user: %s", err.Error())
 	}
@@ -82,7 +85,7 @@ func (d Directory) AddUsers(srv userspb.UserService_AddUsersServer) error {
 		_, err = conn.CopyFrom(
 			srv.Context(),
 			pgx.Identifier{"users"},
-			[]string{"role"},
+			[]string{"role", "name"},
 			&usersSource{
 				getUser: srv.Recv,
 			},
@@ -118,6 +121,7 @@ func (d Directory) ListUsers(req *userspb.ListUsersRequest, srv userspb.UserServ
 		"id",
 		"role",
 		"create_time",
+		"name",
 	).From(
 		"users",
 	).OrderBy(
@@ -165,6 +169,7 @@ func (d Directory) ListUsers(req *userspb.ListUsersRequest, srv userspb.UserServ
 			&pgUser.ID,
 			&pgUser.Role,
 			&pgUser.CreateTime,
+			&pgUser.Name,
 		)
 		if err != nil {
 			return status.Error(codes.Internal, err.Error())

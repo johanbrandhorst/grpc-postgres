@@ -9,7 +9,7 @@ import (
 )
 
 type Querier interface {
-	AddUser(ctx context.Context, role Role) (User, error)
+	AddUser(ctx context.Context, arg AddUserParams) (User, error)
 	DeleteUser(ctx context.Context, id pgtype.UUID) (User, error)
 }
 
