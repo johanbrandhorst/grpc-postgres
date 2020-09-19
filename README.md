@@ -19,7 +19,7 @@ INFO[May 21 22:51:37.091] Serving gRPC on [::]:10000
 INFO[May 21 22:51:37.156] Serving Web UI on https://localhost:10000
 ```
 
-Navigate to http://localhost:10000 to see the auto-generated web UI for the
+Navigate to https://localhost:10000 to see the auto-generated web UI for the
 service, courtesy of gRPC reflection and
 [github.com/fullstorydev/grpcui](https://github.com/fullstorydev/grpcui/)!
 
