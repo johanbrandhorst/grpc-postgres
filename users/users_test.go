@@ -118,12 +118,12 @@ func TestAddDeleteUser(t *testing.T) {
 	t.Parallel()
 
 	log := logrus.New()
-	d, err := users.NewDirectory(log, startDatabase(t, log))
+	directory, err := users.NewDirectory(log, startDatabase(t, log))
 	if err != nil {
 		t.Fatalf("Failed to create a new directory: %s", err)
 	}
 	t.Cleanup(func() {
-		err = d.Close()
+		err = directory.Close()
 		if err != nil {
 			t.Errorf("Failed to close directory: %s", err)
 		}
@@ -136,7 +136,7 @@ func TestAddDeleteUser(t *testing.T) {
 		t.Parallel()
 
 		role := userspb.Role_ADMIN
-		user1, err := d.AddUser(ctx, &userspb.AddUserRequest{
+		user1, err := directory.AddUser(ctx, &userspb.AddUserRequest{
 			Role: role,
 		})
 		if err != nil {
@@ -159,7 +159,7 @@ func TestAddDeleteUser(t *testing.T) {
 			t.Error("Id was not set")
 		}
 
-		user2, err := d.DeleteUser(ctx, &userspb.DeleteUserRequest{
+		user2, err := directory.DeleteUser(ctx, &userspb.DeleteUserRequest{
 			Id: user1.GetId(),
 		})
 		if err != nil {
@@ -174,7 +174,7 @@ func TestAddDeleteUser(t *testing.T) {
 	t.Run("When using a non-uuid in DeleteUser", func(t *testing.T) {
 		t.Parallel()
 
-		_, err = d.DeleteUser(ctx, &userspb.DeleteUserRequest{
+		_, err = directory.DeleteUser(ctx, &userspb.DeleteUserRequest{
 			Id: "not_a_UUID",
 		})
 		if status.Code(err) != codes.InvalidArgument {
@@ -187,12 +187,12 @@ func TestListUsers(t *testing.T) {
 	t.Parallel()
 
 	log := logrus.New()
-	d, err := users.NewDirectory(log, startDatabase(t, log))
+	directory, err := users.NewDirectory(log, startDatabase(t, log))
 	if err != nil {
 		t.Fatalf("Failed to create a new directory: %s", err)
 	}
 	t.Cleanup(func() {
-		err = d.Close()
+		err = directory.Close()
 		if err != nil {
 			t.Errorf("Failed to close directory: %s", err)
 		}
@@ -201,7 +201,7 @@ func TestListUsers(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
-	user1, err := d.AddUser(ctx, &userspb.AddUserRequest{
+	user1, err := directory.AddUser(ctx, &userspb.AddUserRequest{
 		Role: userspb.Role_GUEST,
 	})
 	if err != nil {
@@ -211,7 +211,7 @@ func TestListUsers(t *testing.T) {
 	// Sleep so we have slightly different create times
 	time.Sleep(500 * time.Millisecond)
 
-	user2, err := d.AddUser(ctx, &userspb.AddUserRequest{
+	user2, err := directory.AddUser(ctx, &userspb.AddUserRequest{
 		Role: userspb.Role_MEMBER,
 	})
 	if err != nil {
@@ -221,7 +221,7 @@ func TestListUsers(t *testing.T) {
 	// Sleep so we have slightly different create times
 	time.Sleep(500 * time.Millisecond)
 
-	user3, err := d.AddUser(ctx, &userspb.AddUserRequest{
+	user3, err := directory.AddUser(ctx, &userspb.AddUserRequest{
 		Role: userspb.Role_ADMIN,
 	})
 	if err != nil {
@@ -235,7 +235,7 @@ func TestListUsers(t *testing.T) {
 			ctx: ctx,
 		}
 
-		err := d.ListUsers(new(userspb.ListUsersRequest), srv)
+		err := directory.ListUsers(new(userspb.ListUsersRequest), srv)
 		if err != nil {
 			t.Fatalf("Failed to list users: %s", err)
 		}
@@ -263,7 +263,7 @@ func TestListUsers(t *testing.T) {
 
 		olderThan := time.Since(user2.GetCreateTime().AsTime())
 
-		err := d.ListUsers(&userspb.ListUsersRequest{
+		err := directory.ListUsers(&userspb.ListUsersRequest{
 			OlderThan: durationpb.New(olderThan),
 		}, srv)
 		if err != nil {
@@ -288,7 +288,7 @@ func TestListUsers(t *testing.T) {
 			ctx: ctx,
 		}
 
-		err := d.ListUsers(&userspb.ListUsersRequest{
+		err := directory.ListUsers(&userspb.ListUsersRequest{
 			CreatedSince: user1.GetCreateTime(),
 		}, srv)
 		if err != nil {
@@ -315,7 +315,7 @@ func TestListUsers(t *testing.T) {
 
 		olderThan := time.Since(user2.GetCreateTime().AsTime())
 
-		err := d.ListUsers(&userspb.ListUsersRequest{
+		err := directory.ListUsers(&userspb.ListUsersRequest{
 			CreatedSince: user1.GetCreateTime(),
 			OlderThan:    durationpb.New(olderThan),
 		}, srv)
@@ -335,12 +335,12 @@ func TestAddUsers(t *testing.T) {
 	t.Parallel()
 
 	log := logrus.New()
-	d, err := users.NewDirectory(log, startDatabase(t, log))
+	directory, err := users.NewDirectory(log, startDatabase(t, log))
 	if err != nil {
 		t.Fatalf("Failed to create a new directory: %s", err)
 	}
 	t.Cleanup(func() {
-		err = d.Close()
+		err = directory.Close()
 		if err != nil {
 			t.Errorf("Failed to close directory: %s", err)
 		}
@@ -362,7 +362,7 @@ func TestAddUsers(t *testing.T) {
 			})
 		}
 
-		err = d.AddUsers(addSrv)
+		err = directory.AddUsers(addSrv)
 		if err != nil {
 			t.Fatalf("Failed to add users: %s", err)
 		}
@@ -370,7 +370,7 @@ func TestAddUsers(t *testing.T) {
 		listSrv := &listUsersSrvFake{
 			ctx: ctx,
 		}
-		err = d.ListUsers(new(userspb.ListUsersRequest), listSrv)
+		err = directory.ListUsers(new(userspb.ListUsersRequest), listSrv)
 		if err != nil {
 			t.Fatalf("Failed to list users: %s", err)
 		}
@@ -384,12 +384,12 @@ func BenchmarkAddUsers(b *testing.B) {
 	b.Skip("Benchmarks take a while to run")
 	log := logrus.New()
 	log.Out = ioutil.Discard
-	d, err := users.NewDirectory(log, startDatabase(b, log))
+	directory, err := users.NewDirectory(log, startDatabase(b, log))
 	if err != nil {
 		b.Fatalf("Failed to create a new directory: %s", err)
 	}
 	b.Cleanup(func() {
-		err = d.Close()
+		err = directory.Close()
 		if err != nil {
 			b.Errorf("Failed to close directory: %s", err)
 		}
@@ -409,7 +409,7 @@ func BenchmarkAddUsers(b *testing.B) {
 			})
 		}
 
-		err = d.AddUsers(addSrv)
+		err = directory.AddUsers(addSrv)
 		if err != nil {
 			b.Fatalf("Failed to add users: %s", err)
 		}
@@ -422,12 +422,12 @@ func BenchmarkAddUser(b *testing.B) {
 	b.Skip("Benchmarks take a while to run")
 	log := logrus.New()
 	log.Out = ioutil.Discard
-	d, err := users.NewDirectory(log, startDatabase(b, log))
+	directory, err := users.NewDirectory(log, startDatabase(b, log))
 	if err != nil {
 		b.Fatalf("Failed to create a new directory: %s", err)
 	}
 	b.Cleanup(func() {
-		err = d.Close()
+		err = directory.Close()
 		if err != nil {
 			b.Errorf("Failed to close directory: %s", err)
 		}
@@ -440,7 +440,7 @@ func BenchmarkAddUser(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		var user *userspb.User
 		for pb.Next() {
-			user, err = d.AddUser(ctx, &userspb.AddUserRequest{Role: userspb.Role_MEMBER})
+			user, err = directory.AddUser(ctx, &userspb.AddUserRequest{Role: userspb.Role_MEMBER})
 			if err != nil {
 				b.Fatalf("Failed to add user: %s", err)
 			}
