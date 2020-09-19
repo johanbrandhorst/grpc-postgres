@@ -37,15 +37,3 @@ func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) (User, error) 
 	err := row.Scan(&i.ID, &i.Role, &i.CreateTime)
 	return i, err
 }
-
-const getUser = `-- name: GetUser :one
-SELECT id, role, create_time FROM users
-WHERE id = $1
-`
-
-func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUser, id)
-	var i User
-	err := row.Scan(&i.ID, &i.Role, &i.CreateTime)
-	return i, err
-}
