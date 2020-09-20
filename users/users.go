@@ -73,11 +73,17 @@ func (d Directory) AddUser(ctx context.Context, req *userspb.AddUserRequest) (*u
 }
 
 // AddUsers adds a large amount of users efficiently.
-func (d Directory) AddUsers(srv userspb.UserService_AddUsersServer) error {
+func (d Directory) AddUsers(srv userspb.UserService_AddUsersServer) (retErr error) {
 	conn, err := d.db.Conn(srv.Context())
 	if err != nil {
 		status.Errorf(codes.Internal, "unexpected error getting connection: %s", err.Error())
 	}
+	defer func() {
+		err := conn.Close()
+		if retErr == nil {
+			retErr = err
+		}
+	}()
 	err = conn.Raw(func(driverConn interface{}) error {
 		conn := driverConn.(*stdlib.Conn).Conn()
 		// CopyFrom uses the Postgres COPY protocol to perform bulk data insertion.
