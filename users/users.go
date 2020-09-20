@@ -122,7 +122,7 @@ func (d Directory) DeleteUser(ctx context.Context, req *userspb.DeleteUserReques
 }
 
 // ListUsers lists users in the directory, subject to the request filters.
-func (d Directory) ListUsers(req *userspb.ListUsersRequest, srv userspb.UserService_ListUsersServer) (err error) {
+func (d Directory) ListUsers(req *userspb.ListUsersRequest, srv userspb.UserService_ListUsersServer) (retErr error) {
 	q := d.sb.Select(
 		"id",
 		"role",
@@ -158,14 +158,14 @@ func (d Directory) ListUsers(req *userspb.ListUsersRequest, srv userspb.UserServ
 		)
 	}
 
-	rows, err := q.QueryContext(srv.Context())
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
+	rows, retErr := q.QueryContext(srv.Context())
+	if retErr != nil {
+		return status.Error(codes.Internal, retErr.Error())
 	}
 	defer func() {
 		cerr := rows.Close()
-		if err == nil && cerr != nil {
-			err = status.Error(codes.Internal, cerr.Error())
+		if retErr == nil && cerr != nil {
+			retErr = status.Error(codes.Internal, cerr.Error())
 		}
 	}()
 
@@ -190,9 +190,9 @@ func (d Directory) ListUsers(req *userspb.ListUsersRequest, srv userspb.UserServ
 		}
 	}
 
-	err = rows.Err()
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
+	retErr = rows.Err()
+	if retErr != nil {
+		return status.Error(codes.Internal, retErr.Error())
 	}
 
 	return nil
