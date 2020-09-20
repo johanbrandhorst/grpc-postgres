@@ -5,8 +5,8 @@
 //  asset-dir: true
 //  restore: true
 // sources:
-//  users/migrations/1_initial_schema.down.sql
-//  users/migrations/1_initial_schema.up.sql
+//  users/migrations/001_initial_schema.down.sql
+//  users/migrations/001_initial_schema.up.sql
 
 package migrations
 
@@ -59,16 +59,16 @@ func (*asset) Sys() interface{} {
 
 // _bindata is a table, holding each asset generator, mapped to its name.
 var _bindata = map[string]*asset{
-	"1_initial_schema.down.sql": &asset{
-		name: "1_initial_schema.down.sql",
+	"001_initial_schema.down.sql": &asset{
+		name: "001_initial_schema.down.sql",
 		data: "" +
 			"\x72\x09\xf2\x0f\x50\x08\x71\x74\xf2\x71\x55\xf0\x74\x53\x70\x8d\xf0\x0c\x0e\x09\x56\x28\x2d\x4e" +
 			"\x2d\x2a\x56\x70\x76\x0c\x76\x76\x74\x71\xb5\xe6\x82\xa8\x89\x0c\x70\x55\x28\xca\xcf\x49\xb5\xe6" +
 			"\x02\x04\x00\x00\xff\xff",
 		size: 52,
 	},
-	"1_initial_schema.up.sql": &asset{
-		name: "1_initial_schema.up.sql",
+	"001_initial_schema.up.sql": &asset{
+		name: "001_initial_schema.up.sql",
 		data: "" +
 			"\x64\xce\xc1\x6a\xc3\x30\x0c\x06\xe0\xbb\x9f\xe2\xbf\x25\x81\xbe\x41\x4f\x5e\xab\xb1\xb0\xc4\x0d" +
 			"\xae\xcc\x96\x5d\x42\xb6\x88\x12\x98\x5d\x70\xe2\xf7\x1f\xf5\x48\x2e\xbd\x08\x09\xf4\xfd\xd2\xc9" +
@@ -201,6 +201,6 @@ func AssetDir(name string) ([]string, error) {
 type bintree map[string]bintree
 
 var _bintree = bintree{
-	"1_initial_schema.down.sql": bintree{},
-	"1_initial_schema.up.sql":   bintree{},
+	"001_initial_schema.down.sql": bintree{},
+	"001_initial_schema.up.sql":   bintree{},
 }
