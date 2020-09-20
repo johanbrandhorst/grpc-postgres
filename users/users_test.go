@@ -138,6 +138,7 @@ func TestAddDeleteUser(t *testing.T) {
 		role := userspb.Role_ADMIN
 		user1, err := directory.AddUser(ctx, &userspb.AddUserRequest{
 			Role: role,
+			Name: "Foo",
 		})
 		if err != nil {
 			t.Fatalf("Failed to add a user: %s", err)
@@ -203,6 +204,7 @@ func TestListUsers(t *testing.T) {
 
 	user1, err := directory.AddUser(ctx, &userspb.AddUserRequest{
 		Role: userspb.Role_GUEST,
+		Name: "Foo",
 	})
 	if err != nil {
 		t.Fatalf("Failed to add a user: %s", err)
@@ -213,6 +215,7 @@ func TestListUsers(t *testing.T) {
 
 	user2, err := directory.AddUser(ctx, &userspb.AddUserRequest{
 		Role: userspb.Role_MEMBER,
+		Name: "Bar",
 	})
 	if err != nil {
 		t.Fatalf("Failed to add a user: %s", err)
@@ -223,6 +226,7 @@ func TestListUsers(t *testing.T) {
 
 	user3, err := directory.AddUser(ctx, &userspb.AddUserRequest{
 		Role: userspb.Role_ADMIN,
+		Name: "Baz",
 	})
 	if err != nil {
 		t.Fatalf("Failed to add a user: %s", err)
@@ -359,6 +363,7 @@ func TestAddUsers(t *testing.T) {
 		for i := 0; i < numUsers; i++ {
 			addSrv.reqs = append(addSrv.reqs, &userspb.AddUserRequest{
 				Role: userspb.Role_MEMBER,
+				Name: "Foo",
 			})
 		}
 
@@ -406,6 +411,7 @@ func BenchmarkAddUsers(b *testing.B) {
 		for pb.Next() {
 			addSrv.reqs = append(addSrv.reqs, &userspb.AddUserRequest{
 				Role: userspb.Role_MEMBER,
+				Name: "Foo",
 			})
 		}
 
@@ -440,7 +446,10 @@ func BenchmarkAddUser(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		var user *userspb.User
 		for pb.Next() {
-			user, err = directory.AddUser(ctx, &userspb.AddUserRequest{Role: userspb.Role_MEMBER})
+			user, err = directory.AddUser(ctx, &userspb.AddUserRequest{
+				Role: userspb.Role_MEMBER,
+				Name: "Foo",
+			})
 			if err != nil {
 				b.Fatalf("Failed to add user: %s", err)
 			}
