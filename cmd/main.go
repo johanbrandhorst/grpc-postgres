@@ -51,6 +51,7 @@ func main() {
 	if *add {
 		user, err := c.AddUser(ctx, &userspb.AddUserRequest{
 			Role: userspb.Role_GUEST,
+			Name: "Foo",
 		})
 		if err != nil {
 			log.WithError(err).Fatal("Failed to add user")
@@ -59,6 +60,7 @@ func main() {
 			"id":          user.GetId(),
 			"role":        user.GetRole().String(),
 			"create_time": user.GetCreateTime().AsTime().Local().Format(time.RFC3339),
+			"name":        user.GetName(),
 		}).Info("Added user")
 	}
 
@@ -86,6 +88,7 @@ func main() {
 			"id":          user.GetId(),
 			"role":        user.GetRole().String(),
 			"create_time": user.GetCreateTime().AsTime().Local().Format(time.RFC3339),
+			"name":        user.GetName(),
 		}).Info("Read user")
 	}
 
