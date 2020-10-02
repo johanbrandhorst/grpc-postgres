@@ -31,7 +31,6 @@ require (
 	github.com/tmthrgd/go-bindata v0.0.0-20190904063317-a4b65675e0fb
 	github.com/tmthrgd/go-rand v0.0.0-20190904060720-34764beea44d // indirect
 	github.com/zach-klippenstein/goregen v0.0.0-20160303162051-795b5e3961ea // indirect
-	golang.org/x/sys v0.0.0-20200909081042-eff7692f9009 // indirect
 	golang.org/x/tools v0.0.0-20200911193555-6422fca01df9 // indirect
 	google.golang.org/grpc v1.32.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v0.0.0-20200910201057-6591123024b3
@@ -43,3 +42,6 @@ require (
 
 // https://github.com/kyleconroy/sqlc/issues/654
 replace github.com/pingcap/parser => github.com/kyleconroy/parser v0.0.0-20200819185651-2caf0f596c0c
+
+// https://github.com/ory/dockertest/issues/208#issuecomment-686820414
+replace golang.org/x/sys => golang.org/x/sys v0.0.0-20200826173525-f9321e4c35a6
