@@ -1,12 +1,21 @@
+BUF_VERSION:=0.40.0
+SQLC_VERSION:=1.8.0
+
 install:
 	go install \
 		google.golang.org/protobuf/cmd/protoc-gen-go \
-		google.golang.org/grpc/cmd/protoc-gen-go-grpc \
-		github.com/tmthrgd/go-bindata/go-bindata \
-		github.com/bufbuild/buf/cmd/buf \
-		github.com/kyleconroy/sqlc/cmd/sqlc
+		google.golang.org/grpc/cmd/protoc-gen-go-grpc
+	curl -sSL \
+		"https://github.com/bufbuild/buf/releases/download/v$(BUF_VERSION)/buf-Linux-x86_64" \
+		-o "$(shell go env GOPATH)/bin/buf"
+	chmod +x "$(shell go env GOPATH)/bin/buf"
+	curl -sSL \
+		"https://github.com/kyleconroy/sqlc/releases/download/v$(SQLC_VERSION)/sqlc-v$(SQLC_VERSION)-linux-amd64.zip" \
+		-o sqlc.zip
+	unzip -o -d "$(shell go env GOPATH)/bin/" sqlc.zip
+	chmod +x "$(shell go env GOPATH)/bin/sqlc"
+	rm sqlc.zip
 
 generate:
-	buf protoc -I proto --go_out=paths=source_relative:./proto --go-grpc_out=paths=source_relative:./proto ./proto/users.proto
-	go-bindata -pkg migrations -ignore bindata -nometadata -prefix users/migrations/ -o ./users/migrations/bindata.go ./users/migrations
-	cd users && sqlc generate 
+	buf generate
+	cd users && sqlc generate

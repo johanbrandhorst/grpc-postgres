@@ -92,12 +92,12 @@ func main() {
 	s := grpc.NewServer()
 	reflection.Register(s)
 
-	var dir userspb.UnstableUserServiceService
+	var dir userspb.UserServiceServer
 	dir, err = users.NewDirectory(log, (*url.URL)(&u))
 	if err != nil {
 		log.WithError(err).Fatal("Failed to create user directory")
 	}
-	userspb.RegisterUserServiceService(s, userspb.NewUserServiceService(dir))
+	userspb.RegisterUserServiceServer(s, dir)
 
 	// Serve gRPC Server
 	go func() {
