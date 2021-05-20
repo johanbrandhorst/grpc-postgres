@@ -2,11 +2,12 @@ package users
 
 import (
 	"database/sql"
+	"embed"
 	"io"
 
 	migrate "github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
-	bindata "github.com/golang-migrate/migrate/v4/source/go_bindata"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"google.golang.org/grpc/codes"
@@ -14,8 +15,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	userspb "github.com/johanbrandhorst/grpc-postgres/proto"
-	"github.com/johanbrandhorst/grpc-postgres/users/migrations"
 )
+
+//go:embed migrations/*.sql
+var fs embed.FS
 
 // version defines the current migration version. This ensures the app
 // is always compatible with the version of the database.
@@ -23,7 +26,7 @@ const version = 1
 
 // Migrate migrates the Postgres schema to the current version.
 func validateSchema(db *sql.DB) error {
-	sourceInstance, err := bindata.WithInstance(bindata.Resource(migrations.AssetNames(), migrations.Asset))
+	sourceInstance, err := iofs.New(fs, "migrations")
 	if err != nil {
 		return err
 	}
@@ -31,7 +34,7 @@ func validateSchema(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	m, err := migrate.NewWithInstance("go-bindata", sourceInstance, "postgres", targetInstance)
+	m, err := migrate.NewWithInstance("iofs", sourceInstance, "postgres", targetInstance)
 	if err != nil {
 		return err
 	}

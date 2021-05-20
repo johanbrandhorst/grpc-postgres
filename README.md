@@ -44,7 +44,7 @@ service, courtesy of gRPC reflection and
 
 ### Requirements
 
-* `go` > 1.14
+* `go` > 1.16
 
 Run `make install` to install the generation dependencies:
 
