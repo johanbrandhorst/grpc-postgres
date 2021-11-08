@@ -46,12 +46,6 @@ service, courtesy of gRPC reflection and
 
 * `go` > 1.16
 
-Run `make install` to install the generation dependencies:
-
-```bash
-$ make install
-```
-
 ### Making changes
 
 After making any changes to the proto file or the migrations, make sure to
