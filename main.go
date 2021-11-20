@@ -2,80 +2,45 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"errors"
-	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/fullstorydev/grpcui/standalone"
 	"github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 
 	userspb "github.com/johanbrandhorst/grpc-postgres/proto"
 	"github.com/johanbrandhorst/grpc-postgres/users"
 )
 
-type pgURL url.URL
-
-func (p *pgURL) Set(in string) error {
-	u, err := url.Parse(in)
-	if err != nil {
-		return err
-	}
-
-	switch u.Scheme {
-	case "psql", "postgresql":
-	default:
-		return errors.New("unexpected scheme in URL")
-	}
-
-	*p = pgURL(*u)
-	return nil
-}
-
-func (p pgURL) String() string {
-	return (*url.URL)(&p).String()
-}
-
-var (
-	port = flag.Int("port", 10000, "The server port")
-	cert = flag.String("cert", "./insecure/cert.pem", "The path to the server certificate file in PEM format")
-	key  = flag.String("key", "./insecure/key.pem", "The path to the server private key in PEM format")
-	u    pgURL
-)
+const defaultPort = "8080"
 
 func main() {
-	flag.Var(&u, "postgres-url", "URL formatted address of the postgres server to connect to")
-	flag.Parse()
-
 	log := logrus.New()
-	log.Formatter = &logrus.TextFormatter{
-		TimestampFormat: time.StampMilli,
-		FullTimestamp:   true,
+	log.Formatter = &logrus.JSONFormatter{}
+
+	pgURL := os.Getenv("POSTGRES_URL")
+	if pgURL == "" {
+		log.Fatal("POSTGRES_URL must be set")
+	}
+	parsedURL, err := url.Parse(pgURL)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to parse POSTGRES_URL")
 	}
 
-	if u.String() == "" {
-		log.Fatal("Flag postgres-url is required")
+	port := defaultPort
+	if envPort := os.Getenv("PORT"); envPort != "" {
+		port = envPort
 	}
-
-	tlsCert, err := tls.LoadX509KeyPair(*cert, *key)
+	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
-		log.WithError(err).Fatal("Failed to parse certificate and key")
-	}
-	tlsCert.Leaf, _ = x509.ParseCertificate(tlsCert.Certificate[0]) // Can't fail if LoadX509KeyPair succeeded
-	tc := &tls.Config{
-		Certificates: []tls.Certificate{tlsCert},
-	}
-	lis, err := tls.Listen("tcp", fmt.Sprintf(":%d", *port), tc)
-	if err != nil {
-		log.WithError(err).Fatal("Failed to listen")
+		log.WithError(err).Fatal("Failed to create listener")
 	}
 
 	mux := cmux.New(lis)
@@ -93,7 +58,7 @@ func main() {
 	reflection.Register(s)
 
 	var dir userspb.UserServiceServer
-	dir, err = users.NewDirectory(log, (*url.URL)(&u))
+	dir, err = users.NewDirectory(log, parsedURL)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to create user directory")
 	}
@@ -108,18 +73,15 @@ func main() {
 		}
 	}()
 
-	cp := x509.NewCertPool()
-	cp.AddCert(tlsCert.Leaf)
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	sAddr := fmt.Sprintf("dns:///localhost:%d", *port)
+	sAddr := fmt.Sprintf("dns:///localhost:%s", port)
 	cc, err := grpc.DialContext(
 		ctx,
 		sAddr,
 		grpc.WithBlock(),
-		grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(cp, "")),
+		grpc.WithInsecure(),
 	)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to dial local server")
@@ -136,7 +98,7 @@ func main() {
 	}
 
 	// Serve HTTP Server
-	log.Info("Serving Web UI on https://localhost:", *port)
+	log.Info("Serving Web UI on http://localhost:", port)
 	err = httpS.Serve(httpL)
 	if err != http.ErrServerClosed {
 		log.WithError(err).Fatal("Failed to serve Web UI")
