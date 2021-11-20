@@ -3,27 +3,25 @@ module github.com/johanbrandhorst/grpc-postgres
 go 1.16
 
 require (
-	github.com/Masterminds/squirrel v1.5.0
-	github.com/containerd/continuity v0.0.0-20200413184840-d3ef23f19fbb // indirect
-	github.com/fullstorydev/grpcui v1.1.0
-	github.com/fullstorydev/grpcurl v1.8.1 // indirect
-	github.com/golang-migrate/migrate/v4 v4.14.2-0.20210511063805-2e7358e012a6
-	github.com/google/go-cmp v0.5.5
+	github.com/Masterminds/squirrel v1.5.1
+	github.com/fullstorydev/grpcui v1.2.0
+	github.com/golang-migrate/migrate/v4 v4.15.1
+	github.com/google/go-cmp v0.5.6
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/jackc/pgtype v1.7.0
-	github.com/jackc/pgx/v4 v4.11.0
-	github.com/lib/pq v1.10.2 // indirect
+	github.com/jackc/pgconn v1.10.1 // indirect
+	github.com/jackc/pgproto3/v2 v2.2.0 // indirect
+	github.com/jackc/pgtype v1.9.0
+	github.com/jackc/pgx/v4 v4.13.0
+	github.com/lib/pq v1.10.4 // indirect
 	github.com/ory/dockertest/v3 v3.6.0
-	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/soheilhy/cmux v0.1.5
-	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a // indirect
-	golang.org/x/net v0.0.0-20210510120150-4163338589ed // indirect
-	golang.org/x/sys v0.0.0-20210514084401-e8d321eab015 // indirect
-	google.golang.org/genproto v0.0.0-20210518161634-ec7691c0a37d // indirect
-	google.golang.org/grpc v1.38.0
-	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.1.0
+	go.uber.org/atomic v1.9.0 // indirect
+	golang.org/x/crypto v0.0.0-20211117183948-ae814b36b871 // indirect
+	golang.org/x/net v0.0.0-20211118161319-6a13c67c3ce4 // indirect
+	golang.org/x/sys v0.0.0-20211117180635-dee7805ff2e1 // indirect
+	google.golang.org/genproto v0.0.0-20211118181313-81c1377c94b1 // indirect
+	google.golang.org/grpc v1.42.0
 	google.golang.org/protobuf v1.27.1
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
