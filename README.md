@@ -28,13 +28,13 @@ d1a2eb0fb44da9c3488184f5296da28d1c7f88bd32bd4ec81fc254f006886b03
 Start the server:
 
 ```bash
-$ go run main.go --postgres-url postgresql://postgres:mypass@localhost:5432/postgres
+$ POSTGRES_URL=postgresql://postgres:mypass@localhost:5432/postgres go run main.go
 ...
-INFO[May 21 22:51:37.091] Serving gRPC on [::]:10000
-INFO[May 21 22:51:37.156] Serving Web UI on https://localhost:10000
+{"level":"info","msg":"Serving gRPC on [::]:8080"}
+{"level":"info","msg":"Serving Web UI on http://localhost:8080"}
 ```
 
-Navigate to https://localhost:10000 to see the auto-generated web UI for the
+Navigate to http://localhost:8080 to see the auto-generated web UI for the
 service, courtesy of gRPC reflection and
 [github.com/fullstorydev/grpcui](https://github.com/fullstorydev/grpcui/)!
 
