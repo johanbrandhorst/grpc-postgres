@@ -30,7 +30,13 @@ type Directory struct {
 // NewDirectory creates a new Directory, connecting it to the postgres server on
 // the URL provided.
 func NewDirectory(logger *logrus.Logger, pgURL *url.URL) (*Directory, error) {
-	c, err := pgx.ParseConfig(pgURL.String())
+	connURL := *pgURL
+	if connURL.Scheme == "cockroachdb" {
+		// Overwrite the scheme before parsing with pgx, since
+		// it doesn't support the "cockroachdb" scheme.
+		connURL.Scheme = "postgres"
+	}
+	c, err := pgx.ParseConfig(connURL.String())
 	if err != nil {
 		return nil, fmt.Errorf("parsing postgres URI: %w", err)
 	}
@@ -38,7 +44,7 @@ func NewDirectory(logger *logrus.Logger, pgURL *url.URL) (*Directory, error) {
 	c.Logger = logrusadapter.NewLogger(logger)
 	db := stdlib.OpenDB(*c)
 
-	err = validateSchema(db)
+	err = validateSchema(db, pgURL.Scheme)
 	if err != nil {
 		return nil, fmt.Errorf("validating schema: %w", err)
 	}

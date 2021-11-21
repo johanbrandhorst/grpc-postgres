@@ -28,7 +28,7 @@ d1a2eb0fb44da9c3488184f5296da28d1c7f88bd32bd4ec81fc254f006886b03
 Start the server:
 
 ```bash
-$ POSTGRES_URL=postgresql://postgres:mypass@localhost:5432/postgres go run main.go
+$ POSTGRES_URL=postgresql://postgres:mypass@localhost:5432/postgres?sslmode=disable go run main.go
 ...
 {"level":"info","msg":"Serving gRPC on [::]:8080"}
 {"level":"info","msg":"Serving Web UI on http://localhost:8080"}
@@ -39,6 +39,16 @@ service, courtesy of gRPC reflection and
 [github.com/fullstorydev/grpcui](https://github.com/fullstorydev/grpcui/)!
 
 ![gRPCUI](./grpcui.png)
+
+## Usage with Cockroach DB
+
+The application also supports talking to a Cockroach DB instance, by using the `cockroachdb` scheme:
+
+```
+cockroachdb://user:password@host:5432/defaultdb
+```
+
+The scheme is used when performing the database migrations, as the behaviour changes based on the database.
 
 ## Developing
 
