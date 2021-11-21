@@ -76,7 +76,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	sAddr := fmt.Sprintf("dns:///localhost:%s", port)
+	sAddr := fmt.Sprintf("dns:///0.0.0.0:%s", port)
 	cc, err := grpc.DialContext(
 		ctx,
 		sAddr,
@@ -98,7 +98,7 @@ func main() {
 	}
 
 	// Serve HTTP Server
-	log.Info("Serving Web UI on http://localhost:", port)
+	log.Info("Serving Web UI on http://0.0.0.0:", port)
 	err = httpS.Serve(httpL)
 	if err != http.ErrServerClosed {
 		log.WithError(err).Fatal("Failed to serve Web UI")

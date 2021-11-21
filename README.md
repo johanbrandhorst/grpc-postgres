@@ -31,10 +31,10 @@ Start the server:
 $ POSTGRES_URL=postgresql://postgres:mypass@localhost:5432/postgres?sslmode=disable go run main.go
 ...
 {"level":"info","msg":"Serving gRPC on [::]:8080"}
-{"level":"info","msg":"Serving Web UI on http://localhost:8080"}
+{"level":"info","msg":"Serving Web UI on http://0.0.0.0:8080"}
 ```
 
-Navigate to http://localhost:8080 to see the auto-generated web UI for the
+Navigate to http://0.0.0.0:8080 to see the auto-generated web UI for the
 service, courtesy of gRPC reflection and
 [github.com/fullstorydev/grpcui](https://github.com/fullstorydev/grpcui/)!
 
