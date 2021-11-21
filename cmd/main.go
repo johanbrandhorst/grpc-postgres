@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"io"
 	"time"
@@ -16,9 +17,9 @@ import (
 
 var (
 	addr      = flag.String("addr", "dns:///localhost:10000", "The address of the gRPC server")
-	cert      = flag.String("cert", "../insecure/cert.pem", "The path of the server certificate")
 	olderThan = flag.Duration("older_than", 0, "Filter to use when listing users.")
 	add       = flag.Bool("add", false, "Whether to add another user")
+	insecure  = flag.Bool("insecure", false, "Whether to use insecure TLS")
 )
 
 func main() {
@@ -30,15 +31,14 @@ func main() {
 		FullTimestamp:   true,
 	}
 
-	creds, err := credentials.NewClientTLSFromFile(*cert, "")
-	if err != nil {
-		log.WithError(err).Fatal("Failed to create server credentials")
+	var opts []grpc.DialOption
+	if *insecure {
+		opts = append(opts, grpc.WithInsecure())
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{})))
 	}
 
-	conn, err := grpc.Dial(
-		*addr,
-		grpc.WithTransportCredentials(creds),
-	)
+	conn, err := grpc.Dial(*addr, opts...)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to dial the server")
 	}
