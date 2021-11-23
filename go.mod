@@ -9,10 +9,8 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/jackc/pgconn v1.10.1 // indirect
-	github.com/jackc/pgproto3/v2 v2.2.0 // indirect
 	github.com/jackc/pgtype v1.9.0
-	github.com/jackc/pgx/v4 v4.13.0
+	github.com/jackc/pgx/v4 v4.14.0
 	github.com/lib/pq v1.10.4 // indirect
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/sirupsen/logrus v1.8.1
