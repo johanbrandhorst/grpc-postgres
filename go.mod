@@ -14,7 +14,7 @@ require (
 	github.com/jackc/pgtype v1.9.0
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/lib/pq v1.10.4 // indirect
-	github.com/ory/dockertest/v3 v3.6.0
+	github.com/ory/dockertest/v3 v3.8.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/soheilhy/cmux v0.1.5
 	go.uber.org/atomic v1.9.0 // indirect
