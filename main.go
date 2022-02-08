@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/johanbrandhorst/grpc-postgres/internal/database"
 	"net"
 	"net/http"
 	"net/url"
@@ -58,7 +59,12 @@ func main() {
 	reflection.Register(s)
 
 	var dir userspb.UserServiceServer
-	dir, err = users.NewDirectory(log, parsedURL)
+	db, err := database.NewDBConnection(log, parsedURL)
+	if err != nil {
+		log.WithError(err).Fatal("failed to create DB connection")
+	}
+
+	dir, err = users.NewDirectory(log, parsedURL, db)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to create user directory")
 	}

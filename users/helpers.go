@@ -1,16 +1,9 @@
 package users
 
 import (
-	"database/sql"
 	"embed"
-	"fmt"
 	"io"
 
-	migrate "github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database"
-	"github.com/golang-migrate/migrate/v4/database/cockroachdb"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
-	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v4"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -26,34 +19,6 @@ var fs embed.FS
 // is always compatible with the version of the database.
 const version = 1
 
-// Migrate migrates the Postgres schema to the current version.
-func validateSchema(db *sql.DB, scheme string) error {
-	sourceInstance, err := iofs.New(fs, "migrations")
-	if err != nil {
-		return err
-	}
-	var driverInstance database.Driver
-	switch scheme {
-	case "postgres", "postgresql":
-		driverInstance, err = postgres.WithInstance(db, new(postgres.Config))
-	case "cockroachdb":
-		driverInstance, err = cockroachdb.WithInstance(db, new(cockroachdb.Config))
-	default:
-		return fmt.Errorf("unknown scheme: %q", scheme)
-	}
-	if err != nil {
-		return err
-	}
-	m, err := migrate.NewWithInstance("iofs", sourceInstance, scheme, driverInstance)
-	if err != nil {
-		return err
-	}
-	err = m.Migrate(version) // current version
-	if err != nil && err != migrate.ErrNoChange {
-		return err
-	}
-	return sourceInstance.Close()
-}
 
 func userPostgresToProto(pgUser User) (*userspb.User, error) {
 	protoRole, err := rolePostgresToProto(pgUser.Role)

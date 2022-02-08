@@ -3,13 +3,12 @@ package users
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"github.com/johanbrandhorst/grpc-postgres/internal/database"
 	"net/url"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/log/logrusadapter"
 	"github.com/jackc/pgx/v4/stdlib"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
@@ -29,24 +28,10 @@ type Directory struct {
 
 // NewDirectory creates a new Directory, connecting it to the postgres server on
 // the URL provided.
-func NewDirectory(logger *logrus.Logger, pgURL *url.URL) (*Directory, error) {
-	connURL := *pgURL
-	if connURL.Scheme == "cockroachdb" {
-		// Overwrite the scheme before parsing with pgx, since
-		// it doesn't support the "cockroachdb" scheme.
-		connURL.Scheme = "postgres"
-	}
-	c, err := pgx.ParseConfig(connURL.String())
+func NewDirectory(logger *logrus.Logger, pgURL *url.URL , db *sql.DB) (*Directory, error) {
+	err := database.ValidateSchema(db, pgURL.Scheme, fs)
 	if err != nil {
-		return nil, fmt.Errorf("parsing postgres URI: %w", err)
-	}
-
-	c.Logger = logrusadapter.NewLogger(logger)
-	db := stdlib.OpenDB(*c)
-
-	err = validateSchema(db, pgURL.Scheme)
-	if err != nil {
-		return nil, fmt.Errorf("validating schema: %w", err)
+		return nil, err
 	}
 
 	return &Directory{
