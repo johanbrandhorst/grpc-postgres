@@ -3,7 +3,7 @@ module github.com/johanbrandhorst/grpc-postgres
 go 1.16
 
 require (
-	github.com/Masterminds/squirrel v1.5.1
+	github.com/Masterminds/squirrel v1.5.3
 	github.com/fullstorydev/grpcui v1.2.0
 	github.com/golang-migrate/migrate/v4 v4.15.1
 	github.com/google/go-cmp v0.5.6
