@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/fullstorydev/grpcui/standalone"
-	"github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -23,16 +23,17 @@ import (
 const defaultPort = "8080"
 
 func main() {
-	log := logrus.New()
-	log.Formatter = &logrus.JSONFormatter{}
+	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	pgURL := os.Getenv("POSTGRES_URL")
 	if pgURL == "" {
-		log.Fatal("POSTGRES_URL must be set")
+		log.Error("POSTGRES_URL must be set")
+		return
 	}
 	parsedURL, err := url.Parse(pgURL)
 	if err != nil {
-		log.WithError(err).Fatal("Failed to parse POSTGRES_URL")
+		log.Error("Failed to parse POSTGRES_URL", "error", err)
+		return
 	}
 
 	port := defaultPort
@@ -41,7 +42,8 @@ func main() {
 	}
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
-		log.WithError(err).Fatal("Failed to create listener")
+		log.Error("Failed to create listener", "error", err)
+		return
 	}
 
 	mux := cmux.New(lis)
@@ -51,7 +53,8 @@ func main() {
 	go func() {
 		sErr := mux.Serve()
 		if sErr != nil {
-			log.WithError(err).Fatal("Failed to serve cmux")
+			log.Error("Failed to serve cmux", "error", sErr)
+			return
 		}
 	}()
 
@@ -61,16 +64,18 @@ func main() {
 	var dir userspb.UserServiceServer
 	dir, err = users.NewDirectory(log, parsedURL)
 	if err != nil {
-		log.WithError(err).Fatal("Failed to create user directory")
+		log.Error("Failed to create user directory", "error", err)
+		return
 	}
 	userspb.RegisterUserServiceServer(s, dir)
 
 	// Serve gRPC Server
 	go func() {
-		log.Info("Serving gRPC on ", grpcL.Addr().String())
+		log.Info("Serving gRPC on " + grpcL.Addr().String())
 		sErr := s.Serve(grpcL)
 		if sErr != nil {
-			log.WithError(err).Fatal("Failed to serve gRPC")
+			log.Error("Failed to serve gRPC", "error", sErr)
+			return
 		}
 	}()
 
@@ -80,13 +85,15 @@ func main() {
 	sAddr := fmt.Sprintf("dns:///0.0.0.0:%s", port)
 	cc, err := grpc.NewClient(sAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.WithError(err).Fatal("Failed to dial local server")
+		log.Error("Failed to dial local server", "error", err)
+		return
 	}
 	defer cc.Close()
 
 	handler, err := standalone.HandlerViaReflection(ctx, cc, sAddr)
 	if err != nil {
-		log.WithError(err).Fatal("Failed to create grpc UI handler")
+		log.Error("Failed to create grpc UI handler", "error", err)
+		return
 	}
 
 	httpS := &http.Server{
@@ -97,6 +104,7 @@ func main() {
 	log.Info("Serving Web UI on http://0.0.0.0:", port)
 	err = httpS.Serve(httpL)
 	if err != http.ErrServerClosed {
-		log.WithError(err).Fatal("Failed to serve Web UI")
+		log.Error("failed to serve Web UI", "error", err)
+		return
 	}
 }

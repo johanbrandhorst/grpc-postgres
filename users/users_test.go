@@ -5,9 +5,10 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"log/slog"
 	"net"
 	"net/url"
+	"os"
 	"runtime"
 	"testing"
 	"time"
@@ -15,7 +16,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -27,7 +27,7 @@ import (
 	"github.com/johanbrandhorst/grpc-postgres/users"
 )
 
-func startDatabase(tb testing.TB, log *logrus.Logger) *url.URL {
+func startDatabase(tb testing.TB, log *slog.Logger) *url.URL {
 	tb.Helper()
 
 	pgURL := &url.URL{
@@ -71,8 +71,8 @@ func startDatabase(tb testing.TB, log *logrus.Logger) *url.URL {
 
 	logWaiter, err := pool.Client.AttachToContainerNonBlocking(docker.AttachToContainerOptions{
 		Container:    resource.Container.ID,
-		OutputStream: log.Writer(),
-		ErrorStream:  log.Writer(),
+		OutputStream: os.Stdout,
+		ErrorStream:  os.Stdout,
 		Stderr:       true,
 		Stdout:       true,
 		Stream:       true,
@@ -117,7 +117,7 @@ func startDatabase(tb testing.TB, log *logrus.Logger) *url.URL {
 func TestAddDeleteUser(t *testing.T) {
 	t.Parallel()
 
-	log := logrus.New()
+	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	directory, err := users.NewDirectory(log, startDatabase(t, log))
 	if err != nil {
 		t.Fatalf("Failed to create a new directory: %s", err)
@@ -187,7 +187,7 @@ func TestAddDeleteUser(t *testing.T) {
 func TestListUsers(t *testing.T) {
 	t.Parallel()
 
-	log := logrus.New()
+	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	directory, err := users.NewDirectory(log, startDatabase(t, log))
 	if err != nil {
 		t.Fatalf("Failed to create a new directory: %s", err)
@@ -338,7 +338,7 @@ func TestListUsers(t *testing.T) {
 func TestAddUsers(t *testing.T) {
 	t.Parallel()
 
-	log := logrus.New()
+	log := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	directory, err := users.NewDirectory(log, startDatabase(t, log))
 	if err != nil {
 		t.Fatalf("Failed to create a new directory: %s", err)
@@ -387,8 +387,7 @@ func TestAddUsers(t *testing.T) {
 
 func BenchmarkAddUsers(b *testing.B) {
 	b.Skip("Benchmarks take a while to run")
-	log := logrus.New()
-	log.Out = ioutil.Discard
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	directory, err := users.NewDirectory(log, startDatabase(b, log))
 	if err != nil {
 		b.Fatalf("Failed to create a new directory: %s", err)
@@ -426,8 +425,7 @@ var benchmarkUser *userspb.User
 
 func BenchmarkAddUser(b *testing.B) {
 	b.Skip("Benchmarks take a while to run")
-	log := logrus.New()
-	log.Out = ioutil.Discard
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	directory, err := users.NewDirectory(log, startDatabase(b, log))
 	if err != nil {
 		b.Fatalf("Failed to create a new directory: %s", err)

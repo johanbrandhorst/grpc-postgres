@@ -4,14 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"net/url"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/jackc/pgtype"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/log/logrusadapter"
-	"github.com/jackc/pgx/v4/stdlib"
-	"github.com/sirupsen/logrus"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/tracelog"
+	slogadapter "github.com/mcosta74/pgx-slog"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -21,7 +22,7 @@ import (
 
 // Directory stores a directory of users.
 type Directory struct {
-	logger  *logrus.Logger
+	logger  *slog.Logger
 	db      *sql.DB
 	sb      squirrel.StatementBuilderType
 	querier Querier
@@ -29,7 +30,7 @@ type Directory struct {
 
 // NewDirectory creates a new Directory, connecting it to the postgres server on
 // the URL provided.
-func NewDirectory(logger *logrus.Logger, pgURL *url.URL) (*Directory, error) {
+func NewDirectory(logger *slog.Logger, pgURL *url.URL) (*Directory, error) {
 	connURL := *pgURL
 	if connURL.Scheme == "cockroachdb" {
 		// Overwrite the scheme before parsing with pgx, since
@@ -41,7 +42,10 @@ func NewDirectory(logger *logrus.Logger, pgURL *url.URL) (*Directory, error) {
 		return nil, fmt.Errorf("parsing postgres URI: %w", err)
 	}
 
-	c.Logger = logrusadapter.NewLogger(logger)
+	c.Tracer = &tracelog.TraceLog{
+		Logger:   slogadapter.NewLogger(logger),
+		LogLevel: tracelog.LogLevelTrace,
+	}
 	db := stdlib.OpenDB(*c)
 
 	err = validateSchema(db, pgURL.Scheme)
