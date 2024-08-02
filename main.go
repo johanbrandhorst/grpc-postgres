@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 
 	userspb "github.com/johanbrandhorst/grpc-postgres/proto"
@@ -77,12 +78,7 @@ func main() {
 	defer cancel()
 
 	sAddr := fmt.Sprintf("dns:///0.0.0.0:%s", port)
-	cc, err := grpc.DialContext(
-		ctx,
-		sAddr,
-		grpc.WithBlock(),
-		grpc.WithInsecure(),
-	)
+	cc, err := grpc.NewClient(sAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.WithError(err).Fatal("Failed to dial local server")
 	}

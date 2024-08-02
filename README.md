@@ -54,7 +54,7 @@ The scheme is used when performing the database migrations, as the behaviour cha
 
 ### Requirements
 
-* `go` > 1.16
+* `go` > 1.21
 
 ### Making changes
 
