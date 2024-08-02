@@ -101,7 +101,7 @@ func main() {
 	}
 
 	// Serve HTTP Server
-	log.Info("Serving Web UI on http://0.0.0.0:", port)
+	log.Info("Serving Web UI on http://0.0.0.0:" + port)
 	err = httpS.Serve(httpL)
 	if err != http.ErrServerClosed {
 		log.Error("failed to serve Web UI", "error", err)
