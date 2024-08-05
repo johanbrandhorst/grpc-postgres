@@ -10,7 +10,7 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/google/go-cmp v0.6.0
 	github.com/jackc/pgtype v1.14.3
-	github.com/jackc/pgx/v5 v5.5.4
+	github.com/jackc/pgx/v5 v5.6.0
 	github.com/mcosta74/pgx-slog v0.3.1
 	github.com/ory/dockertest/v3 v3.6.0
 	github.com/sirupsen/logrus v1.9.3
